@@ -17,6 +17,7 @@ const firebaseConfig = {
 };
 
 const DOC_PATH = ['tournaments', 'main']; // single shared tournament document
+const ADMIN_EMAIL = 'pavlovskyjast@gmail.com'; // only this Google account can administer
 
 const DEFAULT_STATE = {
   tournamentName: 'Tank Company Cup #1',
@@ -26,6 +27,13 @@ const DEFAULT_STATE = {
   status: 'registration', // registration | live | finished
   teams: [],               // {id, name, players[], seed, points, wins, losses}
   matches: [],              // {id, round, idx, team1, team2, score1, score2, status, winner}
+  info: {
+    rules: '',
+    schedule: '',
+    mapRules: '',
+    prizePool: { first: '', second: '', third: '' },
+    sponsors: []           // [{name, url}]
+  },
   updatedAt: Date.now()
 };
 
@@ -42,13 +50,17 @@ async function initFirebase() {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
   const { getFirestore, doc, onSnapshot, setDoc } =
     await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+  const { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } =
+    await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
   _app = initializeApp(firebaseConfig);
   _db = getFirestore(_app);
   _docRef = doc(_db, DOC_PATH[0], DOC_PATH[1]);
+  const _auth = getAuth(_app);
 
-  // store firestore fns for later use
+  // store firestore + auth fns for later use
   window._fsApi = { doc, onSnapshot, setDoc, getFirestore };
+  window._authApi = { auth: _auth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged };
 
   // Real-time listener — fires on ANY change from ANY device
   onSnapshot(_docRef, (snap) => {
@@ -300,4 +312,70 @@ function roundLabel(round, total) {
   if (round === total - 1) return 'Півфінал';
   if (round === total - 2) return 'Чвертьфінал';
   return `Раунд ${round}`;
+}
+
+/* ---------- AUTH (admin login via Google) ---------- */
+
+let _currentUser = null;
+let _authCallbacks = [];
+
+async function watchAuth(callback) {
+  await _initPromise;
+  _authCallbacks.push(callback);
+  window._authApi.onAuthStateChanged(window._authApi.auth, (user) => {
+    _currentUser = user;
+    callback(user, isAdmin(user));
+  });
+}
+
+function isAdmin(user) {
+  return !!user && user.email === ADMIN_EMAIL;
+}
+
+async function signInAdmin() {
+  await _initPromise;
+  const provider = new window._authApi.GoogleAuthProvider();
+  try {
+    const result = await window._authApi.signInWithPopup(window._authApi.auth, provider);
+    if (!isAdmin(result.user)) {
+      await window._authApi.signOut(window._authApi.auth);
+      throw new Error('NOT_ADMIN');
+    }
+    return result.user;
+  } catch (e) {
+    if (e.message === 'NOT_ADMIN') {
+      throw new Error('Цей акаунт не має прав адміністратора.');
+    }
+    throw new Error('Помилка входу: ' + (e.message || 'спробуй ще раз'));
+  }
+}
+
+async function signOutAdmin() {
+  await _initPromise;
+  await window._authApi.signOut(window._authApi.auth);
+}
+
+function getCurrentUser() {
+  return _currentUser;
+}
+
+/* ---------- TOURNAMENT INFO HELPERS ---------- */
+
+function ensureInfo(state) {
+  if (!state.info) {
+    state.info = structuredClone(DEFAULT_STATE.info);
+  }
+  if (!state.info.prizePool) state.info.prizePool = { first: '', second: '', third: '' };
+  if (!state.info.sponsors) state.info.sponsors = [];
+  return state.info;
+}
+
+function addSponsor(state, name, url) {
+  ensureInfo(state);
+  state.info.sponsors.push({ id: uid(), name: name.trim(), url: url.trim() });
+}
+
+function removeSponsor(state, sponsorId) {
+  ensureInfo(state);
+  state.info.sponsors = state.info.sponsors.filter(s => s.id !== sponsorId);
 }
