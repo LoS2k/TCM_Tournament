@@ -169,6 +169,46 @@
 
     <button class="btn btn-primary mt-24" onclick="saveInfo()">✔ Зберегти інформацію</button>
   </div>
+
+  <!-- HOMEPAGE FEATURES SECTION -->
+  <div class="card mb-16">
+    <div class="card-title">Головна сторінка — додаткові фішки</div>
+
+    <div class="grid-2">
+      <div>
+        <div class="field">
+          <label class="field-label">Дата й час старту турніру (для відліку)</label>
+          <input type="datetime-local" id="homeStartsAt">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label class="field-label">Посилання на Discord-сервер</label>
+          <input type="text" id="homeDiscordUrl" placeholder="https://discord.gg/...">
+        </div>
+        <button class="btn btn-ghost btn-sm mt-24" onclick="saveHomeSettings()">Зберегти налаштування</button>
+      </div>
+
+      <div>
+        <label class="field-label">YouTube-канали коментаторів</label>
+        <div id="streamChannelList" class="mb-16"></div>
+        <div class="field-row" style="margin-bottom:8px">
+          <input type="text" id="streamChannelName" placeholder="Ім'я коментатора">
+          <input type="text" id="streamChannelUrl" placeholder="Посилання на YouTube">
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="addStreamChannelUI()">+ Додати канал</button>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border); margin: 24px 0;">
+
+    <label class="field-label">Стрічка новин / оголошень</label>
+    <div class="field-row mb-16" style="align-items:end;">
+      <div class="field" style="margin-bottom:0">
+        <input type="text" id="newsText" placeholder="Напр.: Фінал переноситься на 19:00 через технічні причини">
+      </div>
+      <button class="btn btn-primary" onclick="addNewsUI()" style="height:42px">+ Опублікувати</button>
+    </div>
+    <div id="newsAdminList"></div>
+  </div>
 </div>
 
 <!-- RESULT MODAL -->
@@ -231,6 +271,7 @@ async function render(s) {
   renderTeams();
   renderBracket();
   renderInfoEditor();
+  renderHomeEditor();
 }
 
 function renderTeams() {
@@ -408,6 +449,89 @@ async function saveInfo() {
   state.info.prizePool.third = document.getElementById('prize3').value.trim();
   await saveState(state);
   showToast('Інформацію збережено');
+}
+
+/* ---------- HOMEPAGE FEATURES ---------- */
+function renderHomeEditor() {
+  ensureHome(state);
+  const home = state.home;
+
+  document.getElementById('homeStartsAt').value = home.startsAt || '';
+  document.getElementById('homeDiscordUrl').value = home.discordUrl || '';
+
+  const chList = document.getElementById('streamChannelList');
+  if (home.streamChannels.length === 0) {
+    chList.innerHTML = `<div class="text-sm text-muted">Каналів ще не додано</div>`;
+  } else {
+    chList.innerHTML = home.streamChannels.map(c => `
+      <div class="sponsor-row">
+        <div style="flex:1">
+          <div class="sponsor-row-name">${esc(c.name)}</div>
+          <div class="sponsor-row-url">${esc(c.youtubeUrl)}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeStreamChannelUI('${c.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+
+  const newsList = document.getElementById('newsAdminList');
+  if (home.news.length === 0) {
+    newsList.innerHTML = `<div class="text-sm text-muted">Оголошень ще немає</div>`;
+  } else {
+    newsList.innerHTML = home.news.map(n => `
+      <div class="sponsor-row">
+        <div style="flex:1">
+          <div class="sponsor-row-name">${esc(n.text)}</div>
+          <div class="sponsor-row-url">${formatNewsTime(n.createdAt)}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeNewsUI('${n.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+}
+
+function formatNewsTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+async function saveHomeSettings() {
+  ensureHome(state);
+  state.home.startsAt = document.getElementById('homeStartsAt').value;
+  state.home.discordUrl = document.getElementById('homeDiscordUrl').value.trim();
+  await saveState(state);
+  showToast('Налаштування збережено');
+}
+
+async function addStreamChannelUI() {
+  const name = document.getElementById('streamChannelName').value.trim();
+  const url = document.getElementById('streamChannelUrl').value.trim();
+  if (!name || !url) return showToast('Заповни ім\'я та посилання');
+  if (!extractYouTubeId(url)) return showToast('Не вдалося розпізнати YouTube-посилання');
+  addStreamChannel(state, name, url);
+  await saveState(state);
+  document.getElementById('streamChannelName').value = '';
+  document.getElementById('streamChannelUrl').value = '';
+  showToast('Канал додано');
+}
+
+async function removeStreamChannelUI(id) {
+  removeStreamChannel(state, id);
+  await saveState(state);
+}
+
+async function addNewsUI() {
+  const text = document.getElementById('newsText').value.trim();
+  if (!text) return showToast('Введи текст оголошення');
+  addNews(state, text);
+  await saveState(state);
+  document.getElementById('newsText').value = '';
+  showToast('Оголошення опубліковано');
+}
+
+async function removeNewsUI(id) {
+  removeNews(state, id);
+  await saveState(state);
 }
 
 function openModal(matchId) {
