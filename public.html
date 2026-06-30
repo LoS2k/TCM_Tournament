@@ -38,6 +38,8 @@
     <div id="bracketWrap"></div>
   </div>
 
+  <div class="info-grid" id="infoGrid"></div>
+
   <div class="card">
     <div class="card-title">Таблиця команд</div>
     <div id="standingsWrap"></div>
@@ -71,6 +73,7 @@ function render(s) {
   renderLiveMatch(state);
   renderBracket(state);
   renderStandings(state);
+  renderInfo(state);
 }
 
 function renderLiveMatch(state) {
@@ -193,6 +196,68 @@ function renderStandings(state) {
   });
   html += `</table>`;
   wrap.innerHTML = html;
+}
+
+function renderInfo(state) {
+  const grid = document.getElementById('infoGrid');
+  ensureInfo(state);
+  const info = state.info;
+
+  const hasAnyInfo = info.rules || info.schedule || info.mapRules ||
+    info.prizePool.first || info.prizePool.second || info.prizePool.third ||
+    info.sponsors.length > 0;
+
+  if (!hasAnyInfo) { grid.innerHTML = ''; return; }
+
+  let html = '';
+
+  if (info.rules) {
+    html += `
+      <div class="card">
+        <div class="info-card-title">📋 Правила турніру</div>
+        <div class="info-text">${esc(info.rules)}</div>
+      </div>`;
+  }
+
+  if (info.schedule) {
+    html += `
+      <div class="card">
+        <div class="info-card-title">🗓 Розклад трансляції</div>
+        <div class="info-text">${esc(info.schedule)}</div>
+      </div>`;
+  }
+
+  if (info.mapRules) {
+    html += `
+      <div class="card">
+        <div class="info-card-title">🗺 Бан / пік мап</div>
+        <div class="info-text">${esc(info.mapRules)}</div>
+      </div>`;
+  }
+
+  if (info.prizePool.first || info.prizePool.second || info.prizePool.third) {
+    html += `
+      <div class="card">
+        <div class="info-card-title">🏆 Призовий фонд</div>
+        ${info.prizePool.first ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥇</span>1 місце</div><div class="prize-amount">${esc(info.prizePool.first)}</div></div>` : ''}
+        ${info.prizePool.second ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥈</span>2 місце</div><div class="prize-amount">${esc(info.prizePool.second)}</div></div>` : ''}
+        ${info.prizePool.third ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥉</span>3 місце</div><div class="prize-amount">${esc(info.prizePool.third)}</div></div>` : ''}
+      </div>`;
+  }
+
+  if (info.sponsors.length > 0) {
+    html += `
+      <div class="card">
+        <div class="info-card-title">🤝 Спонсори та партнери</div>
+        <div>${info.sponsors.map(s =>
+          s.url
+            ? `<a href="${esc(s.url)}" target="_blank" class="sponsor-chip">${esc(s.name)}</a>`
+            : `<span class="sponsor-chip">${esc(s.name)}</span>`
+        ).join('')}</div>
+      </div>`;
+  }
+
+  grid.innerHTML = html;
 }
 
 function esc(s) {
