@@ -34,6 +34,12 @@ const DEFAULT_STATE = {
     prizePool: { first: '', second: '', third: '' },
     sponsors: []           // [{name, url}]
   },
+  home: {
+    startsAt: '',           // ISO datetime string for countdown, e.g. "2026-07-15T18:00"
+    streamChannels: [],      // [{id, name, youtubeUrl}]
+    news: [],                // [{id, text, createdAt}]
+    discordUrl: ''
+  },
   updatedAt: Date.now()
 };
 
@@ -393,4 +399,61 @@ function addSponsor(state, name, url) {
 function removeSponsor(state, sponsorId) {
   ensureInfo(state);
   state.info.sponsors = state.info.sponsors.filter(s => s.id !== sponsorId);
+}
+
+/* ---------- HOME PAGE FEATURES ---------- */
+
+function ensureHome(state) {
+  if (!state.home) state.home = structuredClone(DEFAULT_STATE.home);
+  if (!state.home.streamChannels) state.home.streamChannels = [];
+  if (!state.home.news) state.home.news = [];
+  return state.home;
+}
+
+function extractYouTubeId(url) {
+  if (!url) return null;
+  const patterns = [
+    /youtube\.com\/watch\?v=([\w-]+)/,
+    /youtu\.be\/([\w-]+)/,
+    /youtube\.com\/live\/([\w-]+)/,
+    /youtube\.com\/channel\/([\w-]+)/,
+    /youtube\.com\/@([\w-]+)/,
+    /youtube\.com\/c\/([\w-]+)/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function addStreamChannel(state, name, youtubeUrl) {
+  ensureHome(state);
+  state.home.streamChannels.push({ id: uid(), name: name.trim(), youtubeUrl: youtubeUrl.trim() });
+}
+
+function removeStreamChannel(state, channelId) {
+  ensureHome(state);
+  state.home.streamChannels = state.home.streamChannels.filter(c => c.id !== channelId);
+}
+
+function addNews(state, text) {
+  ensureHome(state);
+  state.home.news.unshift({ id: uid(), text: text.trim(), createdAt: Date.now() });
+  // keep only the latest 20
+  state.home.news = state.home.news.slice(0, 20);
+}
+
+function removeNews(state, newsId) {
+  ensureHome(state);
+  state.home.news = state.home.news.filter(n => n.id !== newsId);
+}
+
+function getTopTeams(state, count = 3) {
+  return getStandings(state).slice(0, count);
+}
+
+function getNextMatch(state) {
+  return state.matches.find(m => m.status === 'live') ||
+         state.matches.find(m => m.status === 'upcoming' && m.team1 !== '?' && m.team2 !== '?' && m.team1 !== 'BYE' && m.team2 !== 'BYE');
 }
