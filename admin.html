@@ -18,10 +18,32 @@
     <a class="nav-link" href="public.html">Турнір</a>
     <a class="nav-link active" href="admin.html">Адмін</a>
   </div>
-  <div class="live-indicator"><span class="live-dot" id="liveDot"></span><span id="liveText">—</span></div>
+  <div id="authBarLoggedOut" class="live-indicator">
+    <span class="live-dot"></span><span>Не авторизовано</span>
+  </div>
+  <div id="authBarLoggedIn" class="admin-bar" style="display:none">
+    <div class="admin-avatar" id="adminAvatar"></div>
+    <span class="admin-email" id="adminEmail"></span>
+    <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Вийти</button>
+  </div>
 </div>
 
-<div class="page">
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-icon">TC</div>
+    <div class="login-title">Вхід до адмінки</div>
+    <div class="login-sub">Доступ лише для організаторів турніру</div>
+    <button class="google-btn" id="googleLoginBtn" onclick="handleLogin()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.8 2.71v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.61z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.95v2.33C2.43 15.98 5.48 18 9 18z"/><path fill="#FBBC05" d="M3.97 10.72c-.18-.54-.28-1.12-.28-1.72s.1-1.18.28-1.72V4.95H.95C.35 6.17 0 7.55 0 9s.35 2.83.95 4.05l3.02-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0 5.48 0 2.43 2.02.95 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+      Увійти через Google
+    </button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ADMIN CONTENT (hidden until authenticated) -->
+<div class="page" id="appContent" style="display:none">
   <div class="page-head">
     <div class="eyebrow">Панель керування</div>
     <h1 class="page-title">Адмінка стріму</h1>
@@ -95,12 +117,57 @@
   </div>
 
   <!-- BRACKET / RESULTS SECTION -->
-  <div class="card">
+  <div class="card mb-16">
     <div class="flex-between mb-16">
       <div class="card-title" style="margin-bottom:0">Матчі — клікни щоб ввести результат</div>
       <span class="badge badge-muted" id="bracketBadge"></span>
     </div>
     <div id="bracketWrap"></div>
+  </div>
+
+  <!-- TOURNAMENT INFO SECTION -->
+  <div class="card mb-16">
+    <div class="card-title">Інформація про турнір (видно на публічній сторінці)</div>
+
+    <div class="grid-2">
+      <div>
+        <div class="field">
+          <label class="field-label">Правила турніру / регламент</label>
+          <textarea id="infoRules" rows="5" placeholder="Опиши формат, регламент дисквалфікації, час очікування тощо..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">Розклад трансляції / дати матчів</label>
+          <textarea id="infoSchedule" rows="3" placeholder="Наприклад: щосуботи о 18:00, фінал — 15 липня"></textarea>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label class="field-label">Правила бану / піку мап</label>
+          <textarea id="infoMapRules" rows="4" placeholder="Наприклад: Бан-Бан-Пік-Пік-Бан-Бан-Decider"></textarea>
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label">Призовий фонд</label>
+        <div class="field-row" style="margin-bottom:10px">
+          <input type="text" id="prize1" placeholder="1 місце, напр. 5000 грн">
+        </div>
+        <div class="field-row" style="margin-bottom:10px">
+          <input type="text" id="prize2" placeholder="2 місце">
+        </div>
+        <div class="field-row" style="margin-bottom:16px">
+          <input type="text" id="prize3" placeholder="3 місце">
+        </div>
+
+        <label class="field-label">Спонсори / партнери</label>
+        <div id="sponsorList" class="mb-16"></div>
+        <div class="field-row" style="margin-bottom:8px">
+          <input type="text" id="sponsorName" placeholder="Назва спонсора">
+          <input type="text" id="sponsorUrl" placeholder="Посилання (опціонально)">
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="addSponsorUI()">+ Додати спонсора</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary mt-24" onclick="saveInfo()">✔ Зберегти інформацію</button>
   </div>
 </div>
 
@@ -145,16 +212,12 @@ async function render(s) {
   document.getElementById('setBestOf').value = state.bestOf;
   document.getElementById('setBracketSize').value = state.bracketSize;
 
-  const liveDot = document.getElementById('liveDot');
-  const liveText = document.getElementById('liveText');
   const statusMap = {
     registration: ['Очікування', false],
     live: ['Турнір триває', true],
     finished: ['Завершено', false]
   };
-  const [label, isLive] = statusMap[state.status] || ['—', false];
-  liveDot.classList.toggle('on', isLive);
-  liveText.textContent = label;
+  const [label] = statusMap[state.status] || ['—', false];
 
   document.getElementById('statusInfo').textContent =
     state.status === 'registration'
@@ -167,6 +230,7 @@ async function render(s) {
 
   renderTeams();
   renderBracket();
+  renderInfoEditor();
 }
 
 function renderTeams() {
@@ -292,6 +356,60 @@ async function removeTeamById(id) {
   await saveState(state);
 }
 
+/* ---------- TOURNAMENT INFO EDITOR ---------- */
+function renderInfoEditor() {
+  ensureInfo(state);
+  document.getElementById('infoRules').value = state.info.rules || '';
+  document.getElementById('infoSchedule').value = state.info.schedule || '';
+  document.getElementById('infoMapRules').value = state.info.mapRules || '';
+  document.getElementById('prize1').value = state.info.prizePool.first || '';
+  document.getElementById('prize2').value = state.info.prizePool.second || '';
+  document.getElementById('prize3').value = state.info.prizePool.third || '';
+
+  const list = document.getElementById('sponsorList');
+  if (state.info.sponsors.length === 0) {
+    list.innerHTML = `<div class="text-sm text-muted">Спонсорів ще не додано</div>`;
+  } else {
+    list.innerHTML = state.info.sponsors.map(s => `
+      <div class="sponsor-row">
+        <div style="flex:1">
+          <div class="sponsor-row-name">${esc(s.name)}</div>
+          ${s.url ? `<div class="sponsor-row-url">${esc(s.url)}</div>` : ''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeSponsorUI('${s.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+}
+
+async function addSponsorUI() {
+  const name = document.getElementById('sponsorName').value.trim();
+  const url = document.getElementById('sponsorUrl').value.trim();
+  if (!name) return showToast('Введи назву спонсора');
+  addSponsor(state, name, url);
+  await saveState(state);
+  document.getElementById('sponsorName').value = '';
+  document.getElementById('sponsorUrl').value = '';
+  showToast('Спонсора додано');
+}
+
+async function removeSponsorUI(id) {
+  removeSponsor(state, id);
+  await saveState(state);
+}
+
+async function saveInfo() {
+  ensureInfo(state);
+  state.info.rules = document.getElementById('infoRules').value.trim();
+  state.info.schedule = document.getElementById('infoSchedule').value.trim();
+  state.info.mapRules = document.getElementById('infoMapRules').value.trim();
+  state.info.prizePool.first = document.getElementById('prize1').value.trim();
+  state.info.prizePool.second = document.getElementById('prize2').value.trim();
+  state.info.prizePool.third = document.getElementById('prize3').value.trim();
+  await saveState(state);
+  showToast('Інформацію збережено');
+}
+
 function openModal(matchId) {
   const m = state.matches.find(x => x.id === matchId);
   if (!m) return;
@@ -348,7 +466,58 @@ document.getElementById('resultModal').addEventListener('click', e => {
 });
 
 window.onTcStateUpdate = render;
-render();
+
+/* ---------- AUTH FLOW ---------- */
+async function handleLogin() {
+  const btn = document.getElementById('googleLoginBtn');
+  const errBox = document.getElementById('loginError');
+  errBox.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = 'Зачекай...';
+  try {
+    await signInAdmin();
+    // onAuthStateChanged listener below will handle UI swap
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.8 2.71v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.61z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.95v2.33C2.43 15.98 5.48 18 9 18z"/><path fill="#FBBC05" d="M3.97 10.72c-.18-.54-.28-1.12-.28-1.72s.1-1.18.28-1.72V4.95H.95C.35 6.17 0 7.55 0 9s.35 2.83.95 4.05l3.02-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0 5.48 0 2.43 2.02.95 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg> Увійти через Google`;
+  }
+}
+
+async function handleLogout() {
+  await signOutAdmin();
+}
+
+watchAuth((user, admin) => {
+  const loginScreen = document.getElementById('loginScreen');
+  const appContent = document.getElementById('appContent');
+  const barOut = document.getElementById('authBarLoggedOut');
+  const barIn = document.getElementById('authBarLoggedIn');
+
+  if (user && admin) {
+    loginScreen.style.display = 'none';
+    appContent.style.display = 'block';
+    barOut.style.display = 'none';
+    barIn.style.display = 'flex';
+    document.getElementById('adminEmail').textContent = user.email;
+    const avatar = document.getElementById('adminAvatar');
+    avatar.innerHTML = user.photoURL
+      ? `<img src="${user.photoURL}" alt="">`
+      : (user.email || '?')[0].toUpperCase();
+    render();
+  } else {
+    loginScreen.style.display = 'flex';
+    appContent.style.display = 'none';
+    barOut.style.display = 'flex';
+    barIn.style.display = 'none';
+    if (user && !admin) {
+      const errBox = document.getElementById('loginError');
+      errBox.textContent = 'Цей акаунт не має прав адміністратора.';
+      errBox.classList.add('show');
+    }
+  }
+});
 </script>
 </body>
 </html>
