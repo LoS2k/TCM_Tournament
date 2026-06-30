@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Адмін-панель — Tank Company Cup</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">TC</div>
+    TANK COMPANY <span class="sub">CUP</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="register.html">Реєстрація</a>
+    <a class="nav-link" href="public.html">Турнір</a>
+    <a class="nav-link active" href="admin.html">Адмін</a>
+  </div>
+  <div class="live-indicator"><span class="live-dot" id="liveDot"></span><span id="liveText">—</span></div>
+</div>
+
+<div class="page">
+  <div class="page-head">
+    <div class="eyebrow">Панель керування</div>
+    <h1 class="page-title">Адмінка стріму</h1>
+    <p class="page-subtitle">Налаштування турніру, керування командами та введення результатів боїв.</p>
+    <div id="loadingNotice" class="text-sm text-muted mt-24">Підключення до сервера...</div>
+  </div>
+
+  <!-- SETUP SECTION -->
+  <div class="grid-2 mb-16">
+    <div class="card">
+      <div class="card-title">Налаштування турніру</div>
+      <div class="field">
+        <label class="field-label">Назва турніру</label>
+        <input type="text" id="setName">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label">Формат</label>
+          <select id="setFormat">
+            <option value="SE">Single Elimination</option>
+            <option value="DE">Double Elimination</option>
+            <option value="RR">Round Robin</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Best of</label>
+          <select id="setBestOf">
+            <option value="1">BO1</option>
+            <option value="3" selected>BO3</option>
+            <option value="5">BO5</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">Розмір сітки</label>
+        <select id="setBracketSize">
+          <option value="4">4 команди</option>
+          <option value="8" selected>8 команд</option>
+          <option value="16">16 команд</option>
+        </select>
+      </div>
+      <button class="btn btn-ghost btn-block" onclick="saveSetup()">Зберегти налаштування</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Дії з турніром</div>
+      <div class="text-sm text-muted mb-16" id="statusInfo"></div>
+      <button class="btn btn-green btn-block mb-16" id="startBtn" onclick="startTournament()">▶ Запустити турнір</button>
+      <button class="btn btn-ghost btn-block mb-16" onclick="goTo('register.html')">↗ Відкрити сторінку реєстрації</button>
+      <button class="btn btn-ghost btn-block mb-16" onclick="goTo('public.html')">↗ Відкрити публічну сторінку</button>
+      <button class="btn btn-danger btn-block" onclick="resetTournament()">✕ Скинути турнір повністю</button>
+    </div>
+  </div>
+
+  <!-- TEAMS SECTION -->
+  <div class="card mb-16">
+    <div class="flex-between mb-16">
+      <div class="card-title" style="margin-bottom:0">Команди</div>
+      <span class="badge badge-muted" id="teamCountBadge"></span>
+    </div>
+
+    <div class="field-row mb-16" style="align-items:end;">
+      <div class="field" style="margin-bottom:0">
+        <label class="field-label">Швидке додавання команди</label>
+        <input type="text" id="quickTeamName" placeholder="Назва команди">
+      </div>
+      <button class="btn btn-primary" onclick="quickAddTeam()" style="height:42px">+ Додати</button>
+    </div>
+
+    <div id="teamList"></div>
+  </div>
+
+  <!-- BRACKET / RESULTS SECTION -->
+  <div class="card">
+    <div class="flex-between mb-16">
+      <div class="card-title" style="margin-bottom:0">Матчі — клікни щоб ввести результат</div>
+      <span class="badge badge-muted" id="bracketBadge"></span>
+    </div>
+    <div id="bracketWrap"></div>
+  </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div class="modal-overlay" id="resultModal">
+  <div class="modal">
+    <div class="modal-title" id="modalMatchId">Матч R1M1</div>
+    <div class="score-grid">
+      <div>
+        <div class="score-team-name" id="modalTeam1">Team 1</div>
+        <input type="number" class="score-input" id="modalScore1" min="0" max="9" value="0">
+      </div>
+      <div class="vs-text">VS</div>
+      <div>
+        <div class="score-team-name" id="modalTeam2">Team 2</div>
+        <input type="number" class="score-input" id="modalScore2" min="0" max="9" value="0">
+      </div>
+    </div>
+    <div class="flex-gap mb-16">
+      <button class="btn btn-green" style="flex:1" onclick="setLive()">◉ Зробити LIVE</button>
+    </div>
+    <div class="flex-gap">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Скасувати</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveResult()">✔ Зберегти результат</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-dot"></span><span id="toastText"></span></div>
+
+<script src="shared.js"></script>
+<script>
+let state = structuredClone(DEFAULT_STATE);
+let editingMatchId = null;
+
+async function render(s) {
+  state = s || await loadStateAsync();
+  document.getElementById('loadingNotice')?.remove();
+
+  document.getElementById('setName').value = state.tournamentName;
+  document.getElementById('setFormat').value = state.format;
+  document.getElementById('setBestOf').value = state.bestOf;
+  document.getElementById('setBracketSize').value = state.bracketSize;
+
+  const liveDot = document.getElementById('liveDot');
+  const liveText = document.getElementById('liveText');
+  const statusMap = {
+    registration: ['Очікування', false],
+    live: ['Турнір триває', true],
+    finished: ['Завершено', false]
+  };
+  const [label, isLive] = statusMap[state.status] || ['—', false];
+  liveDot.classList.toggle('on', isLive);
+  liveText.textContent = label;
+
+  document.getElementById('statusInfo').textContent =
+    state.status === 'registration'
+      ? `${state.teams.length} команд зареєстровано. Мінімум 2 для старту.`
+      : `Статус: ${label}. Матчів: ${state.matches.length}.`;
+
+  const startBtn = document.getElementById('startBtn');
+  startBtn.disabled = state.status !== 'registration' || state.teams.length < 2;
+  startBtn.textContent = state.status === 'registration' ? '▶ Запустити турнір' : '✔ Турнір вже запущено';
+
+  renderTeams();
+  renderBracket();
+}
+
+function renderTeams() {
+  document.getElementById('teamCountBadge').textContent = `${state.teams.length} / ${state.bracketSize}`;
+  const list = document.getElementById('teamList');
+  if (state.teams.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Команд ще немає</div></div>`;
+    return;
+  }
+  list.innerHTML = state.teams.map((t, i) => `
+    <div class="team-row">
+      <div class="team-row-left">
+        <div class="seed-chip">${i + 1}</div>
+        <div>
+          <div class="team-name">${esc(t.name)}</div>
+          <div class="team-players">${t.players.map(esc).join(', ') || 'без гравців'} · ${t.wins}W ${t.losses}L · ${t.points} pts</div>
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeTeamById('${t.id}')" ${state.status !== 'registration' ? 'disabled' : ''}>Видалити</button>
+    </div>
+  `).join('');
+}
+
+function renderBracket() {
+  const wrap = document.getElementById('bracketWrap');
+  const badge = document.getElementById('bracketBadge');
+
+  if (state.matches.length === 0) {
+    badge.textContent = 'Не запущено';
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Запусти турнір щоб побачити сітку</div></div>`;
+    return;
+  }
+  badge.textContent = `${state.matches.filter(m=>m.status==='done').length}/${state.matches.length} завершено`;
+
+  if (state.format === 'RR') {
+    let html = `<table class="standings-table"><tr><th>Матч</th><th>Команда 1</th><th style="text-align:center">Рахунок</th><th>Команда 2</th><th>Статус</th></tr>`;
+    state.matches.forEach(m => {
+      const statusBadge = m.status === 'live' ? '<span class="badge badge-green">LIVE</span>' :
+                           m.status === 'done' ? '<span class="badge badge-muted">✔ Готово</span>' :
+                           '<span class="badge badge-muted">Очікує</span>';
+      html += `<tr style="cursor:pointer" onclick="openModal('${m.id}')">
+        <td style="font-family:var(--font-mono); color:var(--text-3); font-size:12px">${m.id}</td>
+        <td style="font-weight:${m.winner===m.team1?'700':'400'}">${esc(m.team1)}</td>
+        <td style="text-align:center; font-family:var(--font-mono); font-weight:700; color:var(--accent)">${m.score1} : ${m.score2}</td>
+        <td style="font-weight:${m.winner===m.team2?'700':'400'}">${esc(m.team2)}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+    });
+    html += `</table>`;
+    wrap.innerHTML = html;
+    return;
+  }
+
+  const tr = totalRounds(state);
+  let html = `<div class="bracket-scroll"><div class="bracket">`;
+  for (let r = 1; r <= tr; r++) {
+    const matches = getRound(state, r);
+    html += `<div class="bracket-col"><div class="bracket-col-label">${roundLabel(r, tr)}</div><div class="bracket-matches">`;
+    matches.forEach(m => { html += matchCardHtml(m); });
+    html += `</div></div>`;
+  }
+  html += `</div></div>`;
+  wrap.innerHTML = html;
+}
+
+function matchCardHtml(m) {
+  const p1win = m.winner === m.team1;
+  const p2win = m.winner === m.team2;
+  const liveCls = m.status === 'live' ? 'is-live' : '';
+  const liveTag = m.status === 'live' ? `<div class="live-tag">LIVE</div>` : '';
+  return `
+    <div class="match-card ${liveCls}" onclick="openModal('${m.id}')">
+      ${liveTag}
+      <div class="match-id">${m.id}</div>
+      <div class="match-team ${p1win ? 'is-winner' : p2win ? 'is-loser' : ''}">
+        <span class="mt-name">${esc(m.team1)}</span>
+        <span class="mt-score ${p1win ? 'is-win' : ''}">${m.score1}</span>
+      </div>
+      <div class="match-team ${p2win ? 'is-winner' : p1win ? 'is-loser' : ''}">
+        <span class="mt-name">${esc(m.team2)}</span>
+        <span class="mt-score ${p2win ? 'is-win' : ''}">${m.score2}</span>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- ACTIONS ---------- */
+async function saveSetup() {
+  state.tournamentName = document.getElementById('setName').value.trim() || state.tournamentName;
+  state.format = document.getElementById('setFormat').value;
+  state.bestOf = parseInt(document.getElementById('setBestOf').value);
+  state.bracketSize = parseInt(document.getElementById('setBracketSize').value);
+  await saveState(state);
+  showToast('Налаштування збережено');
+}
+
+async function startTournament() {
+  if (state.teams.length < 2) return showToast('Потрібно мінімум 2 команди');
+  generateBracket(state);
+  await saveState(state);
+  showToast('Турнір запущено! ▶');
+}
+
+async function resetTournament() {
+  if (!confirm('Скинути весь турнір? Усі команди та результати буде видалено.')) return;
+  state = structuredClone(DEFAULT_STATE);
+  await saveState(state);
+  showToast('Турнір скинуто');
+}
+
+async function quickAddTeam() {
+  const name = document.getElementById('quickTeamName').value.trim();
+  if (!name) return;
+  if (state.teams.length >= state.bracketSize) return showToast('Усі місця зайняті');
+  addTeam(state, name, []);
+  await saveState(state);
+  document.getElementById('quickTeamName').value = '';
+  showToast(`Додано: ${name}`);
+}
+
+async function removeTeamById(id) {
+  removeTeam(state, id);
+  await saveState(state);
+}
+
+function openModal(matchId) {
+  const m = state.matches.find(x => x.id === matchId);
+  if (!m) return;
+  editingMatchId = matchId;
+  document.getElementById('modalMatchId').textContent = `Матч ${m.id}`;
+  document.getElementById('modalTeam1').textContent = m.team1;
+  document.getElementById('modalTeam2').textContent = m.team2;
+  document.getElementById('modalScore1').value = m.score1;
+  document.getElementById('modalScore2').value = m.score2;
+  document.getElementById('resultModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('resultModal').classList.remove('open');
+  editingMatchId = null;
+}
+
+async function setLive() {
+  if (!editingMatchId) return;
+  setMatchLive(state, editingMatchId);
+  await saveState(state);
+  showToast('Матч переведено в LIVE');
+  closeModal();
+}
+
+async function saveResult() {
+  if (!editingMatchId) return;
+  const s1 = parseInt(document.getElementById('modalScore1').value) || 0;
+  const s2 = parseInt(document.getElementById('modalScore2').value) || 0;
+  submitResult(state, editingMatchId, s1, s2);
+  await saveState(state);
+  showToast('Результат збережено');
+  closeModal();
+}
+
+function goTo(url) { window.open(url, '_blank'); }
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+document.getElementById('resultModal').addEventListener('click', e => {
+  if (e.target.id === 'resultModal') closeModal();
+});
+
+window.onTcStateUpdate = render;
+render();
+</script>
+</body>
+</html>

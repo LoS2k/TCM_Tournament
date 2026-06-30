@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Турнір — Tank Company Cup</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">TC</div>
+    TANK COMPANY <span class="sub">CUP</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="register.html">Реєстрація</a>
+    <a class="nav-link active" href="public.html">Турнір</a>
+    <a class="nav-link" href="admin.html">Адмін</a>
+  </div>
+  <div class="live-indicator"><span class="live-dot" id="liveDot"></span><span id="liveText">—</span></div>
+</div>
+
+<div class="page">
+  <div class="page-head">
+    <div class="eyebrow" id="formatLabel">Формат</div>
+    <h1 class="page-title" id="tournamentTitle">Tank Company Cup #1</h1>
+    <p class="page-subtitle" id="tournamentSub">Слідкуй за результатами турніру в реальному часі.</p>
+  </div>
+
+  <div class="grid-2" style="margin-bottom: 24px;" id="liveMatchWrap"></div>
+
+  <div class="card mb-16">
+    <div class="flex-between mb-16">
+      <div class="card-title" style="margin-bottom:0">Турнірна сітка</div>
+      <span class="badge badge-muted" id="bracketStatusBadge"></span>
+    </div>
+    <div id="bracketWrap"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Таблиця команд</div>
+    <div id="standingsWrap"></div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+function render(s) {
+  const state = s;
+  if (!state) return;
+  document.getElementById('tournamentTitle').textContent = state.tournamentName;
+  document.getElementById('formatLabel').textContent = formatLabel(state.format) + ` · BO${state.bestOf}`;
+
+  const liveDot = document.getElementById('liveDot');
+  const liveText = document.getElementById('liveText');
+  const statusMap = {
+    registration: ['Очікування', false],
+    live: ['Турнір триває', true],
+    finished: ['Турнір завершено', false]
+  };
+  const [label, isLive] = statusMap[state.status] || ['—', false];
+  liveDot.classList.toggle('on', isLive);
+  liveText.textContent = label;
+
+  document.getElementById('tournamentSub').textContent =
+    state.status === 'registration'
+      ? `Реєстрація відкрита — ${state.teams.length}/${state.bracketSize} команд`
+      : 'Слідкуй за результатами турніру в реальному часі.';
+
+  renderLiveMatch(state);
+  renderBracket(state);
+  renderStandings(state);
+}
+
+function renderLiveMatch(state) {
+  const wrap = document.getElementById('liveMatchWrap');
+  const live = state.matches.filter(m => m.status === 'live');
+  if (live.length === 0) { wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
+  wrap.style.display = 'grid';
+  wrap.innerHTML = live.map(m => `
+    <div class="card" style="border-color: var(--green); background: linear-gradient(135deg, var(--bg-1), #2ecf8a0a);">
+      <div class="flex-between mb-16">
+        <span class="badge badge-green">◉ LIVE — ${m.id}</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap: 16px;">
+        <div style="flex:1; text-align:center;">
+          <div style="font-size:16px; font-weight:700;">${esc(m.team1)}</div>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 28px; font-weight: 800; color: var(--green);">
+          ${m.score1} : ${m.score2}
+        </div>
+        <div style="flex:1; text-align:center;">
+          <div style="font-size:16px; font-weight:700;">${esc(m.team2)}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBracket(state) {
+  const wrap = document.getElementById('bracketWrap');
+  const badge = document.getElementById('bracketStatusBadge');
+
+  if (state.status === 'registration' || state.matches.length === 0) {
+    badge.textContent = 'Очікує старту';
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Турнір ще не розпочався</div></div>`;
+    return;
+  }
+  badge.textContent = state.status === 'finished' ? 'Завершено' : 'Триває';
+
+  if (state.format === 'RR') {
+    renderRRTable(state, wrap);
+    return;
+  }
+
+  const tr = totalRounds(state);
+  let html = `<div class="bracket-scroll"><div class="bracket">`;
+  for (let r = 1; r <= tr; r++) {
+    const matches = getRound(state, r);
+    html += `<div class="bracket-col">
+      <div class="bracket-col-label">${roundLabel(r, tr)}</div>
+      <div class="bracket-matches">`;
+    matches.forEach(m => { html += matchCardHtml(m); });
+    html += `</div></div>`;
+  }
+  html += `</div></div>`;
+  wrap.innerHTML = html;
+}
+
+function matchCardHtml(m) {
+  const p1win = m.winner === m.team1;
+  const p2win = m.winner === m.team2;
+  const liveCls = m.status === 'live' ? 'is-live' : '';
+  const liveTag = m.status === 'live' ? `<div class="live-tag">LIVE</div>` : '';
+  return `
+    <div class="match-card ${liveCls}">
+      ${liveTag}
+      <div class="match-id">${m.id}</div>
+      <div class="match-team ${p1win ? 'is-winner' : p2win ? 'is-loser' : ''}">
+        <span class="mt-name">${esc(m.team1)}</span>
+        <span class="mt-score ${p1win ? 'is-win' : ''}">${m.score1}</span>
+      </div>
+      <div class="match-team ${p2win ? 'is-winner' : p1win ? 'is-loser' : ''}">
+        <span class="mt-name">${esc(m.team2)}</span>
+        <span class="mt-score ${p2win ? 'is-win' : ''}">${m.score2}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderRRTable(state, wrap) {
+  let html = `<table class="standings-table"><tr>
+    <th>Матч</th><th>Команда 1</th><th style="text-align:center">Рахунок</th><th>Команда 2</th><th>Статус</th>
+  </tr>`;
+  state.matches.forEach(m => {
+    const statusBadge = m.status === 'live'
+      ? '<span class="badge badge-green">LIVE</span>'
+      : m.status === 'done'
+      ? '<span class="badge badge-muted">Завершено</span>'
+      : '<span class="badge badge-muted">Очікує</span>';
+    html += `<tr>
+      <td style="font-family:var(--font-mono); color:var(--text-3); font-size:12px">${m.id}</td>
+      <td style="font-weight:${m.winner===m.team1?'700':'400'}; color:${m.winner===m.team1?'var(--green)':'inherit'}">${esc(m.team1)}</td>
+      <td style="text-align:center; font-family:var(--font-mono); font-weight:700">${m.score1} : ${m.score2}</td>
+      <td style="font-weight:${m.winner===m.team2?'700':'400'}; color:${m.winner===m.team2?'var(--green)':'inherit'}">${esc(m.team2)}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  });
+  html += `</table>`;
+  wrap.innerHTML = html;
+}
+
+function renderStandings(state) {
+  const wrap = document.getElementById('standingsWrap');
+  const standings = getStandings(state);
+  if (standings.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Команд ще немає</div></div>`;
+    return;
+  }
+  let html = `<table class="standings-table"><tr>
+    <th>#</th><th>Команда</th><th style="text-align:center">W</th><th style="text-align:center">L</th><th style="text-align:right">Бали</th>
+  </tr>`;
+  standings.forEach((t, i) => {
+    const rankCls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+    html += `<tr>
+      <td class="rank-cell ${rankCls}">${i + 1}</td>
+      <td style="font-weight:600">${esc(t.name)}</td>
+      <td style="text-align:center; color:var(--green); font-family:var(--font-mono)">${t.wins}</td>
+      <td style="text-align:center; color:var(--red); font-family:var(--font-mono)">${t.losses}</td>
+      <td class="pts-cell">${t.points} PTS</td>
+    </tr>`;
+  });
+  html += `</table>`;
+  wrap.innerHTML = html;
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+window.onTcStateUpdate = render;
+loadStateAsync().then(render);
+</script>
+</body>
+</html>

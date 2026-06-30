@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Реєстрація команди — Tank Company Cup</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">TC</div>
+    TANK COMPANY <span class="sub">CUP</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link active" href="register.html">Реєстрація</a>
+    <a class="nav-link" href="public.html">Турнір</a>
+    <a class="nav-link" href="admin.html">Адмін</a>
+  </div>
+  <div class="live-indicator"><span class="live-dot" id="liveDot"></span><span id="liveText">Реєстрація відкрита</span></div>
+</div>
+
+<div class="page-narrow">
+  <div class="page-head">
+    <div class="eyebrow">Крок 1 з 1</div>
+    <h1 class="page-title" id="tournamentTitle">Tank Company Cup #1</h1>
+    <p class="page-subtitle">Заповни форму нижче — твоя команда з'явиться в загальному списку одразу після реєстрації.</p>
+  </div>
+
+  <div class="card" id="registrationCard">
+    <div class="card-title">Дані команди</div>
+    <div id="loadingNotice" class="text-sm text-muted mb-16">Підключення до сервера...</div>
+
+    <div class="field">
+      <label class="field-label">Назва команди</label>
+      <input type="text" id="teamName" placeholder="Steel Hunters" maxlength="30">
+    </div>
+
+    <div class="field">
+      <label class="field-label">Гравці (по одному в рядку)</label>
+      <textarea id="teamPlayers" rows="4" placeholder="GravecYUA
+TankMaster_UA
+Kolobok88"></textarea>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="submitBtn" onclick="submitRegistration()">
+      Зареєструвати команду
+    </button>
+
+    <div class="text-sm text-muted mt-24" id="slotsInfo" style="text-align:center"></div>
+  </div>
+
+  <div class="card mt-32">
+    <div class="flex-between mb-16">
+      <div class="card-title" style="margin-bottom:0">Зареєстровані команди</div>
+      <span class="badge badge-muted" id="teamCountBadge">0 команд</span>
+    </div>
+    <div id="teamList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-dot"></span><span id="toastText"></span></div>
+
+<script src="shared.js"></script>
+<script>
+let state = structuredClone(DEFAULT_STATE);
+
+async function render(s) {
+  state = s || await loadStateAsync();
+  document.getElementById('loadingNotice').style.display = 'none';
+  document.getElementById('tournamentTitle').textContent = state.tournamentName;
+
+  const liveDot = document.getElementById('liveDot');
+  const liveText = document.getElementById('liveText');
+  const card = document.getElementById('registrationCard');
+  const submitBtn = document.getElementById('submitBtn');
+
+  if (state.status === 'registration') {
+    liveDot.classList.remove('on');
+    liveText.textContent = 'Реєстрація відкрита';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Зареєструвати команду';
+  } else {
+    liveDot.classList.add('on');
+    liveText.textContent = state.status === 'live' ? 'Турнір розпочато' : 'Турнір завершено';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Реєстрація закрита';
+  }
+
+  document.getElementById('teamCountBadge').textContent = `${state.teams.length} / ${state.bracketSize} команд`;
+  document.getElementById('slotsInfo').textContent =
+    state.teams.length >= state.bracketSize
+      ? 'Усі місця заповнено'
+      : `Вільних місць: ${state.bracketSize - state.teams.length}`;
+
+  const list = document.getElementById('teamList');
+  if (state.teams.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Поки що жодна команда не зареєструвалась</div></div>`;
+    return;
+  }
+  list.innerHTML = state.teams.map((t, i) => `
+    <div class="team-row">
+      <div class="team-row-left">
+        <div class="seed-chip">${i + 1}</div>
+        <div>
+          <div class="team-name">${escapeHtml(t.name)}</div>
+          <div class="team-players">${t.players.map(escapeHtml).join(', ') || 'без гравців'}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function submitRegistration() {
+  const name = document.getElementById('teamName').value.trim();
+  const playersRaw = document.getElementById('teamPlayers').value;
+  const players = playersRaw.split('\n').map(p => p.trim()).filter(Boolean);
+
+  if (!name) return showToast('Введи назву команди');
+  if (state.status !== 'registration') return showToast('Реєстрація закрита');
+  if (state.teams.length >= state.bracketSize) return showToast('Усі місця вже зайняті');
+  if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase())) return showToast('Команда з такою назвою вже є');
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Реєструємо...';
+
+  addTeam(state, name, players);
+  await saveState(state);
+
+  document.getElementById('teamName').value = '';
+  document.getElementById('teamPlayers').value = '';
+  showToast(`Команда "${name}" зареєстрована!`);
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Зареєструвати команду';
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+window.onTcStateUpdate = render;
+render();
+</script>
+</body>
+</html>
