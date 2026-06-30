@@ -395,3 +395,104 @@ input::placeholder { color: var(--text-3); }
 }
 .sponsor-row-name { font-weight: 600; font-size: 13.5px; flex: 1; }
 .sponsor-row-url { font-size: 11.5px; color: var(--text-3); }
+
+/* ===== HERO / COUNTDOWN ===== */
+.hero {
+  text-align: center;
+  padding: 56px 24px 40px;
+}
+.hero-eyebrow {
+  font-size: 11.5px; font-weight: 700; letter-spacing: 1.5px;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+}
+.hero-title { font-size: 38px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 10px; }
+.hero-sub { font-size: 15px; color: var(--text-2); margin-bottom: 28px; }
+
+.countdown {
+  display: flex; justify-content: center; gap: 14px; margin-bottom: 28px;
+}
+.countdown-unit {
+  background: var(--bg-1); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 18px; min-width: 76px;
+}
+.countdown-num {
+  font-family: var(--font-mono); font-size: 30px; font-weight: 800; color: var(--accent);
+  line-height: 1;
+}
+.countdown-label {
+  font-size: 10.5px; color: var(--text-3); text-transform: uppercase;
+  letter-spacing: 0.8px; margin-top: 6px;
+}
+.countdown-live {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--green-dim); color: var(--green);
+  font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 30px;
+  margin-bottom: 28px;
+}
+
+.hero-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.discord-btn {
+  background: #5865F2; color: #fff; font-family: var(--font-display);
+  font-weight: 700; font-size: 13.5px; padding: 11px 22px;
+  border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;
+  transition: background .12s;
+}
+.discord-btn:hover { background: #6a75f5; }
+
+/* ===== QUICK STATS (next match / top teams) ===== */
+.quick-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px; margin-bottom: 24px;
+}
+.next-match-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.next-match-team { font-size: 15px; font-weight: 700; text-align: center; flex: 1; }
+.next-match-vs { font-size: 11px; font-weight: 700; color: var(--text-3); }
+
+.top-team-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+}
+.top-team-row:last-child { border-bottom: none; }
+.top-team-medal { font-size: 17px; width: 22px; text-align: center; }
+.top-team-name { flex: 1; font-weight: 600; font-size: 13.5px; }
+.top-team-pts { font-family: var(--font-mono); font-weight: 700; font-size: 12.5px; color: var(--accent); }
+
+/* ===== STREAM CHANNELS ===== */
+.stream-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.stream-card { padding: 0; overflow: hidden; }
+.stream-embed { aspect-ratio: 16/9; width: 100%; border: none; display: block; background: #000; }
+.stream-card-footer {
+  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+}
+.stream-name { font-weight: 700; font-size: 13.5px; }
+.stream-link {
+  font-size: 11.5px; color: var(--text-3); display: flex; align-items: center; gap: 5px;
+}
+.stream-link:hover { color: var(--accent); }
+
+/* ===== NEWS FEED ===== */
+.news-item {
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.news-item:last-child { border-bottom: none; }
+.news-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+  margin-top: 7px; flex-shrink: 0;
+}
+.news-text { font-size: 13.5px; line-height: 1.6; flex: 1; }
+.news-time { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+
+/* ===== NAV CARDS (register/public/admin links) ===== */
+.nav-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.nav-card {
+  display: block; padding: 20px;
+  transition: border-color .15s, transform .12s;
+}
+.nav-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+.nav-card-title { font-size: 15.5px; font-weight: 700; margin-bottom: 4px; }
