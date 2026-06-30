@@ -17,7 +17,7 @@ const firebaseConfig = {
 };
 
 const DOC_PATH = ['tournaments', 'main']; // single shared tournament document
-const ADMIN_EMAIL = 'pavlovskyjast@gmail.com'; // only this Google account can administer
+const ADMINS_COLLECTION = 'admins'; // doc per admin: admins/{uid} = { email }
 
 const DEFAULT_STATE = {
   tournamentName: 'Tank Company Cup #1',
@@ -48,7 +48,7 @@ let _readyCallbacks = [];
 async function initFirebase() {
   if (_ready) return;
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-  const { getFirestore, doc, onSnapshot, setDoc } =
+  const { getFirestore, doc, onSnapshot, setDoc, getDoc } =
     await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
   const { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } =
     await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
@@ -59,7 +59,7 @@ async function initFirebase() {
   const _auth = getAuth(_app);
 
   // store firestore + auth fns for later use
-  window._fsApi = { doc, onSnapshot, setDoc, getFirestore };
+  window._fsApi = { doc, onSnapshot, setDoc, getDoc, getFirestore, db: _db };
   window._authApi = { auth: _auth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged };
 
   // Real-time listener — fires on ANY change from ANY device
@@ -314,22 +314,35 @@ function roundLabel(round, total) {
   return `Раунд ${round}`;
 }
 
-/* ---------- AUTH (admin login via Google) ---------- */
+/* ---------- AUTH (admin login via Google, admin status via Firestore) ---------- */
 
 let _currentUser = null;
-let _authCallbacks = [];
+let _isCurrentUserAdmin = false;
+
+async function checkIsAdmin(uid) {
+  if (!uid) return false;
+  try {
+    const adminDocRef = window._fsApi.doc(window._fsApi.db, ADMINS_COLLECTION, uid);
+    const snap = await window._fsApi.getDoc(adminDocRef);
+    return snap.exists();
+  } catch (e) {
+    console.error('[Auth] Admin check failed:', e);
+    return false;
+  }
+}
 
 async function watchAuth(callback) {
   await _initPromise;
-  _authCallbacks.push(callback);
-  window._authApi.onAuthStateChanged(window._authApi.auth, (user) => {
+  window._authApi.onAuthStateChanged(window._authApi.auth, async (user) => {
     _currentUser = user;
-    callback(user, isAdmin(user));
+    _isCurrentUserAdmin = await checkIsAdmin(user?.uid);
+    callback(user, _isCurrentUserAdmin);
   });
 }
 
 function isAdmin(user) {
-  return !!user && user.email === ADMIN_EMAIL;
+  // Synchronous check against last-known result (set by watchAuth)
+  return !!user && _isCurrentUserAdmin;
 }
 
 async function signInAdmin() {
@@ -337,7 +350,9 @@ async function signInAdmin() {
   const provider = new window._authApi.GoogleAuthProvider();
   try {
     const result = await window._authApi.signInWithPopup(window._authApi.auth, provider);
-    if (!isAdmin(result.user)) {
+    const admin = await checkIsAdmin(result.user.uid);
+    _isCurrentUserAdmin = admin;
+    if (!admin) {
       await window._authApi.signOut(window._authApi.auth);
       throw new Error('NOT_ADMIN');
     }
