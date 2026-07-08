@@ -49,9 +49,18 @@
   <div class="info-grid" id="infoGrid"></div>
 
   <!-- STANDINGS -->
-  <div class="card">
+  <div class="card mb-16">
     <div class="card-title" id="standingsTitle">Standings</div>
     <div id="standingsWrap"></div>
+  </div>
+
+  <!-- HALL OF FAME -->
+  <div id="hofSection" style="display:none">
+    <div class="page-head" style="margin-top:32px; margin-bottom:16px;">
+      <div class="eyebrow" data-i18n="hof_title">🏆 Hall of Fame</div>
+      <h2 style="font-size:22px; font-weight:800;" data-i18n="hof_subtitle">Champions of past tournaments</h2>
+    </div>
+    <div class="hof-grid" id="hofGrid"></div>
   </div>
 </div>
 
@@ -94,6 +103,61 @@ function render(s) {
   renderBracket(s);
   renderInfo(s);
   renderStandings(s, isSolo);
+  renderHof(s);
+}
+
+/* ---------- HALL OF FAME ---------- */
+function renderHof(s) {
+  ensurePastTournaments(s);
+  const section = document.getElementById('hofSection');
+  const grid = document.getElementById('hofGrid');
+  if (!section || !grid) return;
+
+  if (!s.pastTournaments.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  grid.innerHTML = s.pastTournaments.map(rec => `
+    <div class="hof-card">
+      <div class="hof-card-top">
+        <div class="hof-card-name">${esc(rec.name)}</div>
+        <div class="hof-card-meta">
+          <span>📅 ${rec.date}</span>
+          <span>${rec.format} · BO${rec.bestOf}</span>
+          <span>${rec.teams} ${t('hof_teams')}</span>
+        </div>
+      </div>
+      <div class="hof-card-body">
+        <div class="hof-podium">
+          <div class="hof-place gold">
+            <span class="hof-medal">🥇</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_winner')}</div>
+              <div class="hof-place-name">${esc(rec.winner)}</div>
+            </div>
+            ${rec.prizePool?.first ? `<span class="hof-prize">${esc(rec.prizePool.first)}</span>` : ''}
+          </div>
+          ${rec.runnerUp && rec.runnerUp !== '—' ? `
+          <div class="hof-place silver">
+            <span class="hof-medal">🥈</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_runner_up')}</div>
+              <div class="hof-place-name">${esc(rec.runnerUp)}</div>
+            </div>
+            ${rec.prizePool?.second ? `<span class="hof-prize">${esc(rec.prizePool.second)}</span>` : ''}
+          </div>` : ''}
+          ${rec.thirdPlace && rec.thirdPlace !== '—' ? `
+          <div class="hof-place bronze">
+            <span class="hof-medal">🥉</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_third')}</div>
+              <div class="hof-place-name">${esc(rec.thirdPlace)}</div>
+            </div>
+            ${rec.prizePool?.third ? `<span class="hof-prize">${esc(rec.prizePool.third)}</span>` : ''}
+          </div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
 }
 
 /* ---------- LIVE MATCH ---------- */
