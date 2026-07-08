@@ -231,6 +231,21 @@ const TRANSLATIONS = {
     groups_title: 'Groups',
     groups_stage: 'Group stage',
     groups_playoff: 'Playoffs',
+
+    // Hall of Fame
+    hof_title: '🏆 Hall of Fame',
+    hof_subtitle: 'Champions of past tournaments',
+    hof_empty: 'No past tournaments yet',
+    hof_winner: 'Champion',
+    hof_runner_up: '2nd place',
+    hof_third: '3rd place',
+    hof_teams: 'teams',
+    hof_archive_btn: '📦 Archive current tournament',
+    hof_archive_confirm: 'Archive current tournament and save results to Hall of Fame?',
+    hof_archived: 'Tournament archived!',
+    hof_remove_confirm: 'Remove this record from Hall of Fame?',
+    hof_format: 'Format',
+    hof_date: 'Date',
   },
 
   uk: {
@@ -432,6 +447,21 @@ const TRANSLATIONS = {
     groups_title: 'Групи',
     groups_stage: 'Груповий етап',
     groups_playoff: 'Плейоф',
+
+    // Hall of Fame
+    hof_title: '🏆 Зала слави',
+    hof_subtitle: 'Чемпіони минулих турнірів',
+    hof_empty: 'Минулих турнірів ще немає',
+    hof_winner: 'Чемпіон',
+    hof_runner_up: '2 місце',
+    hof_third: '3 місце',
+    hof_teams: 'команд',
+    hof_archive_btn: '📦 Архівувати поточний турнір',
+    hof_archive_confirm: 'Архівувати поточний турнір і зберегти результати в Залу слави?',
+    hof_archived: 'Турнір заархівовано!',
+    hof_remove_confirm: 'Видалити цей запис із Зали слави?',
+    hof_format: 'Формат',
+    hof_date: 'Дата',
   },
 
   pl: {
@@ -547,6 +577,21 @@ const TRANSLATIONS = {
     logout_btn: 'Wyloguj',
     groups_stage: 'Faza grupowa',
     groups_playoff: 'Playoff',
+
+    // Hall of Fame
+    hof_title: '🏆 Hall of Fame',
+    hof_subtitle: 'Mistrzowie poprzednich turniejów',
+    hof_empty: 'Brak poprzednich turniejów',
+    hof_winner: 'Mistrz',
+    hof_runner_up: '2. miejsce',
+    hof_third: '3. miejsce',
+    hof_teams: 'drużyn',
+    hof_archive_btn: '📦 Archiwizuj turniej',
+    hof_archive_confirm: 'Archiwizować turniej i zapisać wyniki w Hall of Fame?',
+    hof_archived: 'Turniej zarchiwizowany!',
+    hof_remove_confirm: 'Usunąć ten wpis z Hall of Fame?',
+    hof_format: 'Format',
+    hof_date: 'Data',
   },
 
   cs: {
@@ -661,6 +706,21 @@ const TRANSLATIONS = {
     logout_btn: 'Odhlásit',
     groups_stage: 'Skupinová fáze',
     groups_playoff: 'Play-off',
+
+    // Hall of Fame
+    hof_title: '🏆 Síň slávy',
+    hof_subtitle: 'Šampioni minulých turnajů',
+    hof_empty: 'Žádné předchozí turnaje',
+    hof_winner: 'Šampion',
+    hof_runner_up: '2. místo',
+    hof_third: '3. místo',
+    hof_teams: 'týmů',
+    hof_archive_btn: '📦 Archivovat turnaj',
+    hof_archive_confirm: 'Archivovat turnaj a uložit výsledky do Síně slávy?',
+    hof_archived: 'Turnaj archivován!',
+    hof_remove_confirm: 'Odstranit tento záznam ze Síně slávy?',
+    hof_format: 'Formát',
+    hof_date: 'Datum',
   }
 };
 
