@@ -50,6 +50,18 @@
     <div id="newsList"></div>
   </div>
 
+  <!-- HALL OF FAME -->
+  <div id="hofSection" style="display:none; margin-bottom:32px;">
+    <div class="page-head" style="margin-bottom:16px;">
+      <div class="eyebrow" id="hofEyebrow">🏆 Hall of Fame</div>
+      <h2 style="font-size:22px; font-weight:800;" id="hofSubtitle">Champions of past tournaments</h2>
+    </div>
+    <div class="hof-grid" id="hofGrid"></div>
+    <div style="text-align:center; margin-top:14px;">
+      <a href="public.html" class="btn btn-ghost btn-sm">View all →</a>
+    </div>
+  </div>
+
   <!-- NAVIGATION -->
   <div class="nav-cards">
     <a href="register.html" class="card nav-card">
@@ -96,6 +108,56 @@ function render(state) {
   renderQuickGrid(state);
   renderStreams(state);
   renderNews(state);
+  renderHofIndex(state);
+}
+
+/* ---------- HALL OF FAME (index - show only latest 3) ---------- */
+function renderHofIndex(s) {
+  ensurePastTournaments(s);
+  const section = document.getElementById('hofSection');
+  const grid = document.getElementById('hofGrid');
+  if (!section || !grid) return;
+
+  const past = s.pastTournaments.slice(0, 3);
+  if (!past.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  const hofEyebrow = document.getElementById('hofEyebrow');
+  const hofSubtitle = document.getElementById('hofSubtitle');
+  if (hofEyebrow) hofEyebrow.textContent = t('hof_title');
+  if (hofSubtitle) hofSubtitle.textContent = t('hof_subtitle');
+
+  grid.innerHTML = past.map(rec => `
+    <div class="hof-card">
+      <div class="hof-card-top">
+        <div class="hof-card-name">${esc(rec.name)}</div>
+        <div class="hof-card-meta">
+          <span>📅 ${rec.date}</span>
+          <span>${rec.format} · BO${rec.bestOf}</span>
+        </div>
+      </div>
+      <div class="hof-card-body">
+        <div class="hof-podium">
+          <div class="hof-place gold">
+            <span class="hof-medal">🥇</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_winner')}</div>
+              <div class="hof-place-name">${esc(rec.winner)}</div>
+            </div>
+            ${rec.prizePool?.first ? `<span class="hof-prize">${esc(rec.prizePool.first)}</span>` : ''}
+          </div>
+          ${rec.runnerUp && rec.runnerUp !== '—' ? `
+          <div class="hof-place silver">
+            <span class="hof-medal">🥈</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_runner_up')}</div>
+              <div class="hof-place-name">${esc(rec.runnerUp)}</div>
+            </div>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
 }
 
 /* ---------- COUNTDOWN ---------- */
