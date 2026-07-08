@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Турнір — Tank Company Cup</title>
+<title>Tournament — Tank Company Cup</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -19,31 +19,38 @@
     <a class="nav-link active" href="public.html" data-i18n="nav_tournament">Tournament</a>
     <a class="nav-link" href="admin.html" data-i18n="nav_admin">Admin</a>
   </div>
-  <div class="live-indicator"><span class="live-dot" id="liveDot"></span><span id="liveText">—</span></div>
   <div class="lang-switcher" id="langSwitcher"></div>
+  <div class="live-indicator">
+    <span class="live-dot" id="liveDot"></span>
+    <span id="liveText">—</span>
+  </div>
 </div>
 
 <div class="page">
   <div class="page-head">
-    <div class="eyebrow" id="formatLabel">Формат</div>
+    <div class="eyebrow" id="formatLabel">Format</div>
     <h1 class="page-title" id="tournamentTitle">Tank Company Cup #1</h1>
-    <p class="page-subtitle" id="tournamentSub">Слідкуй за результатами турніру в реальному часі.</p>
+    <p class="page-subtitle" id="tournamentSub"></p>
   </div>
 
-  <div class="grid-2" style="margin-bottom: 24px;" id="liveMatchWrap"></div>
+  <!-- LIVE match banner -->
+  <div class="grid-2" style="margin-bottom:24px;" id="liveMatchWrap"></div>
 
+  <!-- BRACKET -->
   <div class="card mb-16">
     <div class="flex-between mb-16">
-      <div class="card-title" style="margin-bottom:0">Турнірна сітка</div>
+      <div class="card-title" style="margin-bottom:0" id="bracketTitle">Bracket</div>
       <span class="badge badge-muted" id="bracketStatusBadge"></span>
     </div>
     <div id="bracketWrap"></div>
   </div>
 
+  <!-- INFO BLOCKS -->
   <div class="info-grid" id="infoGrid"></div>
 
+  <!-- STANDINGS -->
   <div class="card">
-    <div class="card-title">Таблиця команд</div>
+    <div class="card-title" id="standingsTitle">Standings</div>
     <div id="standingsWrap"></div>
   </div>
 </div>
@@ -52,218 +59,294 @@
 <script src="i18n.js"></script>
 <script>
 buildLangPicker('langSwitcher');
-applyTranslations();
 
 function render(s) {
-  const state = s;
-  if (!state) return;
-  document.getElementById('tournamentTitle').textContent = state.tournamentName;
-  document.getElementById('formatLabel').textContent = formatLabel(state.format) + ` · BO${state.bestOf}`;
+  if (!s) return;
 
+  // Apply i18n after state loaded so mode-aware strings work
+  applyTranslations();
+
+  document.getElementById('tournamentTitle').textContent = s.tournamentName;
+  document.getElementById('bracketTitle').textContent = t('pub_bracket_title');
+  document.getElementById('standingsTitle').textContent = t('pub_standings_title');
+
+  const isSolo = (s.mode || 'team') === 'solo';
+  const fmt = (s.format || 'SE').toUpperCase();
+  document.getElementById('formatLabel').textContent = `${fmt} · BO${s.bestOf}`;
+
+  // Status indicator
   const liveDot = document.getElementById('liveDot');
   const liveText = document.getElementById('liveText');
-  const statusMap = {
-    registration: ['Очікування', false],
-    live: ['Турнір триває', true],
-    finished: ['Турнір завершено', false]
-  };
-  const [label, isLive] = statusMap[state.status] || ['—', false];
-  liveDot.classList.toggle('on', isLive);
-  liveText.textContent = label;
+  const statusLabel = {
+    registration: t('pub_status_waiting'),
+    live: t('pub_status_live'),
+    finished: t('pub_status_finished')
+  }[s.status] || '—';
+  liveDot.classList.toggle('on', s.status === 'live');
+  liveText.textContent = statusLabel;
 
   document.getElementById('tournamentSub').textContent =
-    state.status === 'registration'
-      ? `Реєстрація відкрита — ${state.teams.length}/${state.bracketSize} команд`
-      : 'Слідкуй за результатами турніру в реальному часі.';
+    s.status === 'registration'
+      ? t('pub_sub_registration', { n: s.teams.length, max: s.bracketSize })
+      : t('pub_sub_default');
 
-  renderLiveMatch(state);
-  renderBracket(state);
-  renderStandings(state);
-  renderInfo(state);
+  renderLiveMatch(s);
+  renderBracket(s);
+  renderInfo(s);
+  renderStandings(s, isSolo);
 }
 
-function renderLiveMatch(state) {
+/* ---------- LIVE MATCH ---------- */
+function renderLiveMatch(s) {
   const wrap = document.getElementById('liveMatchWrap');
-  const live = state.matches.filter(m => m.status === 'live');
-  if (live.length === 0) { wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
+  const live = s.matches.filter(m => m.status === 'live');
+  if (!live.length) { wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
   wrap.style.display = 'grid';
   wrap.innerHTML = live.map(m => `
-    <div class="card" style="border-color: var(--green); background: linear-gradient(135deg, var(--bg-1), #2ecf8a0a);">
+    <div class="card" style="border-color:var(--green); background:linear-gradient(135deg,var(--bg-1),#2ecf8a0a);">
       <div class="flex-between mb-16">
         <span class="badge badge-green">◉ LIVE — ${m.id}</span>
       </div>
-      <div style="display:flex; align-items:center; justify-content:space-between; gap: 16px;">
-        <div style="flex:1; text-align:center;">
-          <div style="font-size:16px; font-weight:700;">${esc(m.team1)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:16px;font-weight:700;">${esc(m.team1)}</div>
         </div>
-        <div style="font-family: var(--font-mono); font-size: 28px; font-weight: 800; color: var(--green);">
+        <div style="font-family:var(--font-mono);font-size:28px;font-weight:800;color:var(--green);">
           ${m.score1} : ${m.score2}
         </div>
-        <div style="flex:1; text-align:center;">
-          <div style="font-size:16px; font-weight:700;">${esc(m.team2)}</div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:16px;font-weight:700;">${esc(m.team2)}</div>
         </div>
       </div>
+      ${m.mapBans && m.mapBans.filter(b => b.phase === 'pick').length
+        ? `<div style="text-align:center;margin-top:10px;font-size:12px;color:var(--text-3);">
+            Map: ${m.mapBans.filter(b => b.phase === 'pick').map(b => esc(b.mapName)).join(' / ')}
+           </div>` : ''}
     </div>
   `).join('');
 }
 
-function renderBracket(state) {
+/* ---------- BRACKET ---------- */
+function renderBracket(s) {
   const wrap = document.getElementById('bracketWrap');
   const badge = document.getElementById('bracketStatusBadge');
 
-  if (state.status === 'registration' || state.matches.length === 0) {
-    badge.textContent = 'Очікує старту';
-    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Турнір ще не розпочався</div></div>`;
-    return;
-  }
-  badge.textContent = state.status === 'finished' ? 'Завершено' : 'Триває';
-
-  if (state.format === 'RR') {
-    renderRRTable(state, wrap);
+  if (s.status === 'registration' || !s.matches.length) {
+    badge.textContent = t('pub_bracket_waiting');
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">${t('pub_empty_bracket')}</div></div>`;
     return;
   }
 
-  const tr = totalRounds(state);
-  let html = `<div class="bracket-scroll"><div class="bracket">`;
+  badge.textContent = s.status === 'finished' ? t('pub_bracket_finished') : t('pub_bracket_live');
+
+  // Group stage
+  if (s.format === 'GROUP' && s.groups && s.groups.length) {
+    renderGroupBracket(s, wrap);
+    return;
+  }
+
+  // Round Robin
+  if (s.format === 'RR') {
+    renderRRTable(s, wrap);
+    return;
+  }
+
+  // SE / DE bracket
+  const tr = Math.max(...s.matches.map(m => m.round));
+  let html = '<div class="bracket-scroll"><div class="bracket">';
   for (let r = 1; r <= tr; r++) {
-    const matches = getRound(state, r);
+    const matches = s.matches.filter(m => m.round === r);
+    const label = r === tr ? t('pub_prize_1st').replace('1 місце','Final').replace('1st place','Final')
+                           : r === tr - 1 ? 'Semifinal' : `Round ${r}`;
     html += `<div class="bracket-col">
-      <div class="bracket-col-label">${roundLabel(r, tr)}</div>
-      <div class="bracket-matches">`;
-    matches.forEach(m => { html += matchCardHtml(m); });
-    html += `</div></div>`;
+      <div class="bracket-col-label">${label}</div>
+      <div class="bracket-matches">${matches.map(matchCardHtml).join('')}</div>
+    </div>`;
   }
-  html += `</div></div>`;
+  html += '</div></div>';
+  wrap.innerHTML = html;
+}
+
+function renderGroupBracket(s, wrap) {
+  let html = '<div class="groups-wrap">';
+  s.groups.forEach(g => {
+    const standings = getGroupStandings(s, g.id);
+    html += `<div class="group-card">
+      <div class="group-header">${esc(g.name)}</div>
+      <table class="group-table">
+        <tr><th>#</th><th>${t('pub_col_team')}</th><th>${t('pub_col_w')}</th><th>${t('pub_col_l')}</th><th>${t('pub_col_pts')}</th></tr>
+        ${standings.map((row, i) => `
+          <tr class="${i < 2 ? 'qualify' : ''}">
+            <td style="color:var(--text-3);font-size:12px">${i+1}</td>
+            <td style="font-weight:600">${esc(row.name)}</td>
+            <td style="color:var(--green);text-align:center">${row.wins}</td>
+            <td style="color:var(--red);text-align:center">${row.losses}</td>
+            <td style="color:var(--accent);font-weight:700;text-align:right">${row.points}</td>
+          </tr>`).join('')}
+      </table>
+      <div style="padding:10px 14px;">
+        ${g.matches.map(id => {
+          const m = s.matches.find(x => x.id === id);
+          return m ? matchCardHtml(m) : '';
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function renderRRTable(s, wrap) {
+  const badge_live = t('pub_status_badge_live');
+  const badge_done = t('pub_status_badge_done');
+  const badge_up   = t('pub_status_badge_upcoming');
+  let html = `<table class="standings-table"><tr>
+    <th>${t('pub_rr_match')}</th>
+    <th>${t('pub_col_team')} 1</th>
+    <th style="text-align:center">${t('pub_rr_score')}</th>
+    <th>${t('pub_col_team')} 2</th>
+    <th>${t('pub_rr_status')}</th>
+  </tr>`;
+  s.matches.forEach(m => {
+    const statusBadge = m.status === 'live'
+      ? `<span class="badge badge-green">${badge_live}</span>`
+      : m.status === 'done'
+      ? `<span class="badge badge-muted">${badge_done}</span>`
+      : `<span class="badge badge-muted">${badge_up}</span>`;
+    html += `<tr>
+      <td style="font-family:var(--font-mono);color:var(--text-3);font-size:12px">${m.id}</td>
+      <td style="font-weight:${m.winner===m.team1?'700':'400'};color:${m.winner===m.team1?'var(--green)':'inherit'}">${esc(m.team1)}</td>
+      <td style="text-align:center;font-family:var(--font-mono);font-weight:700">${m.score1} : ${m.score2}</td>
+      <td style="font-weight:${m.winner===m.team2?'700':'400'};color:${m.winner===m.team2?'var(--green)':'inherit'}">${esc(m.team2)}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  });
+  html += '</table>';
   wrap.innerHTML = html;
 }
 
 function matchCardHtml(m) {
   const p1win = m.winner === m.team1;
   const p2win = m.winner === m.team2;
-  const liveCls = m.status === 'live' ? 'is-live' : '';
   const liveTag = m.status === 'live' ? `<div class="live-tag">LIVE</div>` : '';
   return `
-    <div class="match-card ${liveCls}">
+    <div class="match-card ${m.status === 'live' ? 'is-live' : ''}">
       ${liveTag}
       <div class="match-id">${m.id}</div>
-      <div class="match-team ${p1win ? 'is-winner' : p2win ? 'is-loser' : ''}">
+      <div class="match-team ${p1win?'is-winner':p2win?'is-loser':''}">
         <span class="mt-name">${esc(m.team1)}</span>
-        <span class="mt-score ${p1win ? 'is-win' : ''}">${m.score1}</span>
+        <span class="mt-score ${p1win?'is-win':''}">${m.score1}</span>
       </div>
-      <div class="match-team ${p2win ? 'is-winner' : p1win ? 'is-loser' : ''}">
+      <div class="match-team ${p2win?'is-winner':p1win?'is-loser':''}">
         <span class="mt-name">${esc(m.team2)}</span>
-        <span class="mt-score ${p2win ? 'is-win' : ''}">${m.score2}</span>
+        <span class="mt-score ${p2win?'is-win':''}">${m.score2}</span>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-function renderRRTable(state, wrap) {
-  let html = `<table class="standings-table"><tr>
-    <th>Матч</th><th>Команда 1</th><th style="text-align:center">Рахунок</th><th>Команда 2</th><th>Статус</th>
-  </tr>`;
-  state.matches.forEach(m => {
-    const statusBadge = m.status === 'live'
-      ? '<span class="badge badge-green">LIVE</span>'
-      : m.status === 'done'
-      ? '<span class="badge badge-muted">Завершено</span>'
-      : '<span class="badge badge-muted">Очікує</span>';
-    html += `<tr>
-      <td style="font-family:var(--font-mono); color:var(--text-3); font-size:12px">${m.id}</td>
-      <td style="font-weight:${m.winner===m.team1?'700':'400'}; color:${m.winner===m.team1?'var(--green)':'inherit'}">${esc(m.team1)}</td>
-      <td style="text-align:center; font-family:var(--font-mono); font-weight:700">${m.score1} : ${m.score2}</td>
-      <td style="font-weight:${m.winner===m.team2?'700':'400'}; color:${m.winner===m.team2?'var(--green)':'inherit'}">${esc(m.team2)}</td>
-      <td>${statusBadge}</td>
-    </tr>`;
-  });
-  html += `</table>`;
-  wrap.innerHTML = html;
-}
-
-function renderStandings(state) {
-  const wrap = document.getElementById('standingsWrap');
-  const standings = getStandings(state);
-  if (standings.length === 0) {
-    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Команд ще немає</div></div>`;
-    return;
-  }
-  let html = `<table class="standings-table"><tr>
-    <th>#</th><th>Команда</th><th style="text-align:center">W</th><th style="text-align:center">L</th><th style="text-align:right">Бали</th>
-  </tr>`;
-  standings.forEach((t, i) => {
-    const rankCls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
-    html += `<tr>
-      <td class="rank-cell ${rankCls}">${i + 1}</td>
-      <td style="font-weight:600">${esc(t.name)}</td>
-      <td style="text-align:center; color:var(--green); font-family:var(--font-mono)">${t.wins}</td>
-      <td style="text-align:center; color:var(--red); font-family:var(--font-mono)">${t.losses}</td>
-      <td class="pts-cell">${t.points} PTS</td>
-    </tr>`;
-  });
-  html += `</table>`;
-  wrap.innerHTML = html;
-}
-
-function renderInfo(state) {
+/* ---------- INFO BLOCKS ---------- */
+function renderInfo(s) {
   const grid = document.getElementById('infoGrid');
-  ensureInfo(state);
-  const info = state.info;
+  ensureInfo(s);
+  const info = s.info;
 
-  const hasAnyInfo = info.rules || info.schedule || info.mapRules ||
+  const hasInfo = info.rules || info.schedule || info.mapRules ||
     info.prizePool.first || info.prizePool.second || info.prizePool.third ||
     info.sponsors.length > 0;
 
-  if (!hasAnyInfo) { grid.innerHTML = ''; return; }
+  if (!hasInfo) { grid.innerHTML = ''; return; }
 
   let html = '';
 
-  if (info.rules) {
-    html += `
-      <div class="card">
-        <div class="info-card-title">📋 Правила турніру</div>
-        <div class="info-text">${esc(info.rules)}</div>
-      </div>`;
-  }
+  if (info.rules) html += `
+    <div class="card">
+      <div class="info-card-title">${t('pub_rules_title')}</div>
+      <div class="info-text">${esc(info.rules)}</div>
+    </div>`;
 
-  if (info.schedule) {
-    html += `
-      <div class="card">
-        <div class="info-card-title">🗓 Розклад трансляції</div>
-        <div class="info-text">${esc(info.schedule)}</div>
-      </div>`;
-  }
+  if (info.schedule) html += `
+    <div class="card">
+      <div class="info-card-title">${t('pub_schedule_title')}</div>
+      <div class="info-text">${esc(info.schedule)}</div>
+    </div>`;
 
-  if (info.mapRules) {
-    html += `
-      <div class="card">
-        <div class="info-card-title">🗺 Бан / пік мап</div>
-        <div class="info-text">${esc(info.mapRules)}</div>
-      </div>`;
-  }
+  if (info.mapRules) html += `
+    <div class="card">
+      <div class="info-card-title">${t('pub_mapban_title')}</div>
+      <div class="info-text">${esc(info.mapRules)}</div>
+    </div>`;
 
-  if (info.prizePool.first || info.prizePool.second || info.prizePool.third) {
-    html += `
-      <div class="card">
-        <div class="info-card-title">🏆 Призовий фонд</div>
-        ${info.prizePool.first ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥇</span>1 місце</div><div class="prize-amount">${esc(info.prizePool.first)}</div></div>` : ''}
-        ${info.prizePool.second ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥈</span>2 місце</div><div class="prize-amount">${esc(info.prizePool.second)}</div></div>` : ''}
-        ${info.prizePool.third ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥉</span>3 місце</div><div class="prize-amount">${esc(info.prizePool.third)}</div></div>` : ''}
-      </div>`;
-  }
+  if (info.prizePool.first || info.prizePool.second || info.prizePool.third) html += `
+    <div class="card">
+      <div class="info-card-title">${t('pub_prize_title')}</div>
+      ${info.prizePool.first  ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥇</span>${t('pub_prize_1st')}</div><div class="prize-amount">${esc(info.prizePool.first)}</div></div>` : ''}
+      ${info.prizePool.second ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥈</span>${t('pub_prize_2nd')}</div><div class="prize-amount">${esc(info.prizePool.second)}</div></div>` : ''}
+      ${info.prizePool.third  ? `<div class="prize-row"><div class="prize-place"><span class="prize-medal">🥉</span>${t('pub_prize_3rd')}</div><div class="prize-amount">${esc(info.prizePool.third)}</div></div>` : ''}
+    </div>`;
 
-  if (info.sponsors.length > 0) {
-    html += `
-      <div class="card">
-        <div class="info-card-title">🤝 Спонсори та партнери</div>
-        <div>${info.sponsors.map(s =>
-          s.url
-            ? `<a href="${esc(s.url)}" target="_blank" class="sponsor-chip">${esc(s.name)}</a>`
-            : `<span class="sponsor-chip">${esc(s.name)}</span>`
-        ).join('')}</div>
-      </div>`;
-  }
+  if (info.sponsors.length > 0) html += `
+    <div class="card">
+      <div class="info-card-title">${t('pub_sponsors_title')}</div>
+      <div>${info.sponsors.map(s =>
+        s.url
+          ? `<a href="${esc(s.url)}" target="_blank" class="sponsor-chip">${esc(s.name)}</a>`
+          : `<span class="sponsor-chip">${esc(s.name)}</span>`
+      ).join('')}</div>
+    </div>`;
 
   grid.innerHTML = html;
+}
+
+/* ---------- MAP POOL (public view) ---------- */
+function renderMapBanInfo(s, matchId) {
+  if (!s.mapPool || !s.mapPool.length) return '';
+  const m = s.matches.find(x => x.id === matchId);
+  if (!m || !m.mapBans || !m.mapBans.length) return '';
+  return `<div class="map-grid" style="margin-top:12px;">
+    ${s.mapPool.map(map => {
+      const banEntry = m.mapBans.find(b => b.mapName === map.name);
+      const cls = !banEntry ? '' : banEntry.phase === 'ban' ? 'is-banned' : banEntry.phase === 'pick' ? 'is-picked' : 'is-decider';
+      const badge = !banEntry ? '' : `<div class="map-card-badge ${banEntry.phase}">${banEntry.phase.toUpperCase()}</div>`;
+      return `<div class="map-card ${cls}">
+        ${map.imageUrl ? `<img src="${esc(map.imageUrl)}" alt="${esc(map.name)}">` : `<div class="map-card-placeholder">🗺️</div>`}
+        ${badge}
+        <div class="map-card-name">${esc(map.name)}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ---------- STANDINGS ---------- */
+function renderStandings(s, isSolo) {
+  const wrap = document.getElementById('standingsWrap');
+  const standings = getStandings(s);
+
+  if (!standings.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">${t('pub_empty_standings')}</div></div>`;
+    return;
+  }
+
+  let html = `<table class="standings-table"><tr>
+    <th>#</th>
+    <th>${t('pub_col_team')}</th>
+    <th style="text-align:center">${t('pub_col_w')}</th>
+    <th style="text-align:center">${t('pub_col_l')}</th>
+    <th style="text-align:right">${t('pub_col_pts')}</th>
+  </tr>`;
+
+  standings.forEach((team, i) => {
+    const rankCls = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+    html += `<tr>
+      <td class="rank-cell ${rankCls}">${i+1}</td>
+      <td style="font-weight:600">${esc(team.name)}</td>
+      <td style="text-align:center;color:var(--green);font-family:var(--font-mono)">${team.wins}</td>
+      <td style="text-align:center;color:var(--red);font-family:var(--font-mono)">${team.losses}</td>
+      <td class="pts-cell">${team.points} PTS</td>
+    </tr>`;
+  });
+
+  html += '</table>';
+  wrap.innerHTML = html;
 }
 
 function esc(s) {
@@ -275,6 +358,7 @@ function esc(s) {
 
 window.onTcStateUpdate = render;
 loadStateAsync().then(render);
+setInterval(() => { if (window.onTcStateUpdate) render(null); }, 5000);
 </script>
 </body>
 </html>
