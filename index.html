@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,10 +15,11 @@
     TANK COMPANY <span class="sub">CUP</span>
   </div>
   <div class="nav-links">
-    <a class="nav-link" href="register.html">Реєстрація</a>
-    <a class="nav-link" href="public.html">Турнір</a>
-    <a class="nav-link" href="admin.html">Адмін</a>
+    <a class="nav-link" href="register.html" data-i18n="nav_register">Register</a>
+    <a class="nav-link" href="public.html" data-i18n="nav_tournament">Tournament</a>
+    <a class="nav-link" href="admin.html" data-i18n="nav_admin">Admin</a>
   </div>
+  <div class="lang-switcher" id="langSwitcher"></div>
 </div>
 
 <div class="page">
@@ -68,7 +69,11 @@
 </div>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script>
+buildLangPicker('langSwitcher');
+applyTranslations();
+
 let countdownTimer = null;
 
 function render(state) {
