@@ -43,6 +43,7 @@ const DEFAULT_STATE = {
     news: [],
     discordUrl: ''
   },
+  pastTournaments: [],   // [{id, name, date, format, mode, winner, runnerUp, thirdPlace, teams, prizePool}]
   updatedAt: Date.now()
 };
 
@@ -483,6 +484,40 @@ function shuffleSeeds(state) {
   const shuffled = shuffle([...state.teams]);
   shuffled.forEach((t, i) => { t.seed = i + 1; });
   state.teams = shuffled;
+}
+
+/* ---------- PAST TOURNAMENTS (Hall of Fame) ---------- */
+
+function ensurePastTournaments(state) {
+  if (!state.pastTournaments) state.pastTournaments = [];
+  return state.pastTournaments;
+}
+
+function archiveCurrentTournament(state) {
+  ensurePastTournaments(state);
+  const standings = getStandings(state);
+
+  const record = {
+    id: uid(),
+    name: state.tournamentName,
+    date: new Date().toISOString().split('T')[0],
+    format: state.format || 'SE',
+    mode: state.mode || 'team',
+    bestOf: state.bestOf,
+    teams: state.teams.length,
+    winner:     standings[0]?.name || '—',
+    runnerUp:   standings[1]?.name || '—',
+    thirdPlace: standings[2]?.name || '—',
+    prizePool: state.info?.prizePool || { first: '', second: '', third: '' },
+  };
+
+  state.pastTournaments.unshift(record); // newest first
+  return record;
+}
+
+function removePastTournament(state, id) {
+  ensurePastTournaments(state);
+  state.pastTournaments = state.pastTournaments.filter(t => t.id !== id);
 }
 
 /* ---------- TOURNAMENT INFO HELPERS ---------- */
