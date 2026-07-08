@@ -21,23 +21,26 @@ const ADMINS_COLLECTION = 'admins'; // doc per admin: admins/{uid} = { email }
 
 const DEFAULT_STATE = {
   tournamentName: 'Tank Company Cup #1',
-  format: 'SE',          // SE | DE | RR
+  format: 'SE',          // SE | DE | RR | GROUP
+  mode: 'team',          // team | solo (1v1)
   bestOf: 3,
   bracketSize: 8,
-  status: 'registration', // registration | live | finished
-  teams: [],               // {id, name, players[], seed, points, wins, losses}
-  matches: [],              // {id, round, idx, team1, team2, score1, score2, status, winner}
+  status: 'registration',
+  teams: [],             // {id, name, players[], seed, points, wins, losses}
+  matches: [],           // {id, round, idx, team1, team2, score1, score2, status, winner, mapBans[]}
+  groups: [],            // [{id, name, teams[], matches[]}] — for GROUP format
+  mapPool: [],           // {id, name, imageUrl}
   info: {
     rules: '',
     schedule: '',
     mapRules: '',
     prizePool: { first: '', second: '', third: '' },
-    sponsors: []           // [{name, url}]
+    sponsors: []
   },
   home: {
-    startsAt: '',           // ISO datetime string for countdown, e.g. "2026-07-15T18:00"
-    streamChannels: [],      // [{id, name, youtubeUrl}]
-    news: [],                // [{id, text, createdAt}]
+    startsAt: '',
+    streamChannels: [],
+    news: [],
     discordUrl: ''
   },
   updatedAt: Date.now()
@@ -378,6 +381,108 @@ async function signOutAdmin() {
 
 function getCurrentUser() {
   return _currentUser;
+}
+
+/* ---------- MAP POOL ---------- */
+
+function ensureMapPool(state) {
+  if (!state.mapPool) state.mapPool = [];
+  return state.mapPool;
+}
+
+function addMap(state, name, imageUrl) {
+  ensureMapPool(state);
+  state.mapPool.push({ id: uid(), name: name.trim(), imageUrl: imageUrl || '' });
+}
+
+function removeMap(state, mapId) {
+  state.mapPool = (state.mapPool || []).filter(m => m.id !== mapId);
+}
+
+function getBannedMaps(match) {
+  if (!match || !match.mapBans) return [];
+  return match.mapBans.filter(b => b.phase === 'ban').map(b => b.mapName);
+}
+
+function getPickedMaps(match) {
+  if (!match || !match.mapBans) return [];
+  return match.mapBans.filter(b => b.phase === 'pick').map(b => b.mapName);
+}
+
+/* ---------- GROUP STAGE ---------- */
+
+function generateGroupStage(state, groupCount = 2) {
+  state.matches = [];
+  state.groups = [];
+
+  const teams = shuffle([...state.teams]);
+  const size = Math.ceil(teams.length / groupCount);
+
+  for (let g = 0; g < groupCount; g++) {
+    const groupTeams = teams.slice(g * size, (g + 1) * size);
+    const groupMatches = [];
+    let matchIdx = 0;
+
+    for (let i = 0; i < groupTeams.length; i++) {
+      for (let j = i + 1; j < groupTeams.length; j++) {
+        const m = {
+          id: `G${g + 1}M${matchIdx + 1}`,
+          round: matchIdx + 1,
+          idx: matchIdx,
+          group: g,
+          team1: groupTeams[i].name,
+          team2: groupTeams[j].name,
+          score1: 0, score2: 0,
+          status: 'upcoming', winner: null,
+          bestOf: state.bestOf,
+          mapBans: []
+        };
+        groupMatches.push(m);
+        state.matches.push(m);
+        matchIdx++;
+      }
+    }
+
+    state.groups.push({
+      id: `G${g + 1}`,
+      name: `Group ${String.fromCharCode(65 + g)}`,
+      teams: groupTeams.map(t => t.name),
+      matches: groupMatches.map(m => m.id)
+    });
+  }
+}
+
+function getGroupStandings(state, groupId) {
+  const group = (state.groups || []).find(g => g.id === groupId);
+  if (!group) return [];
+
+  const stats = {};
+  group.teams.forEach(name => { stats[name] = { name, wins: 0, losses: 0, points: 0, played: 0 }; });
+
+  state.matches
+    .filter(m => m.group !== undefined && `G${m.group + 1}` === groupId && m.status === 'done')
+    .forEach(m => {
+      if (!stats[m.winner]) return;
+      const loser = m.winner === m.team1 ? m.team2 : m.team1;
+      stats[m.winner].wins++;
+      stats[m.winner].points += 3;
+      stats[m.winner].played++;
+      if (stats[loser]) { stats[loser].losses++; stats[loser].played++; }
+    });
+
+  return Object.values(stats).sort((a, b) => b.points - a.points || b.wins - a.wins);
+}
+
+/* ---------- SEEDING ---------- */
+
+function applySeeds(state) {
+  state.teams.forEach((t, i) => { t.seed = i + 1; });
+}
+
+function shuffleSeeds(state) {
+  const shuffled = shuffle([...state.teams]);
+  shuffled.forEach((t, i) => { t.seed = i + 1; });
+  state.teams = shuffled;
 }
 
 /* ---------- TOURNAMENT INFO HELPERS ---------- */
