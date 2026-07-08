@@ -256,6 +256,19 @@
   </div>
 </div>
 
+  <!-- HALL OF FAME SECTION -->
+  <div class="card mb-16">
+    <div class="flex-between mb-16">
+      <div>
+        <div class="card-title" style="margin-bottom:4px" data-i18n="hof_title">🏆 Hall of Fame</div>
+        <div class="text-sm text-muted" data-i18n="hof_subtitle">Champions of past tournaments</div>
+      </div>
+      <button class="btn btn-yellow btn-sm" onclick="archiveTournamentUI()" data-i18n="hof_archive_btn">📦 Archive</button>
+    </div>
+    <div id="hofList"></div>
+  </div>
+</div>
+
 <!-- RESULT MODAL -->
 <div class="modal-overlay" id="resultModal">
   <div class="modal">
@@ -328,6 +341,7 @@ async function render(s) {
   renderInfoEditor();
   renderHomeEditor();
   renderMapPool();
+  renderHof();
 }
 
 function onModeChange(save = false) {
@@ -700,6 +714,82 @@ async function addNewsUI() {
 async function removeNewsUI(id) {
   removeNews(state, id);
   await saveState(state);
+}
+
+/* ---------- HALL OF FAME ---------- */
+function renderHof() {
+  ensurePastTournaments(state);
+  const list = document.getElementById('hofList');
+  if (!list) return;
+
+  if (!state.pastTournaments.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏆</div><div class="empty-state-text">${t('hof_empty')}</div></div>`;
+    return;
+  }
+
+  list.innerHTML = `<div class="hof-grid">${state.pastTournaments.map(rec => `
+    <div class="hof-card">
+      <button class="hof-remove-btn" onclick="removeHofUI('${rec.id}')" title="Remove">✕</button>
+      <div class="hof-card-top">
+        <div class="hof-card-name">${esc(rec.name)}</div>
+        <div class="hof-card-meta">
+          <span>📅 ${rec.date}</span>
+          <span>${rec.format} · BO${rec.bestOf}</span>
+          <span>${rec.teams} ${t('hof_teams')}</span>
+        </div>
+      </div>
+      <div class="hof-card-body">
+        <div class="hof-podium">
+          <div class="hof-place gold">
+            <span class="hof-medal">🥇</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_winner')}</div>
+              <div class="hof-place-name">${esc(rec.winner)}</div>
+            </div>
+            ${rec.prizePool?.first ? `<span class="hof-prize">${esc(rec.prizePool.first)}</span>` : ''}
+          </div>
+          ${rec.runnerUp && rec.runnerUp !== '—' ? `
+          <div class="hof-place silver">
+            <span class="hof-medal">🥈</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_runner_up')}</div>
+              <div class="hof-place-name">${esc(rec.runnerUp)}</div>
+            </div>
+            ${rec.prizePool?.second ? `<span class="hof-prize">${esc(rec.prizePool.second)}</span>` : ''}
+          </div>` : ''}
+          ${rec.thirdPlace && rec.thirdPlace !== '—' ? `
+          <div class="hof-place bronze">
+            <span class="hof-medal">🥉</span>
+            <div class="hof-place-info">
+              <div class="hof-place-label">${t('hof_third')}</div>
+              <div class="hof-place-name">${esc(rec.thirdPlace)}</div>
+            </div>
+            ${rec.prizePool?.third ? `<span class="hof-prize">${esc(rec.prizePool.third)}</span>` : ''}
+          </div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+async function archiveTournamentUI() {
+  if (!confirm(t('hof_archive_confirm'))) return;
+  const rec = archiveCurrentTournament(state);
+  if (!rec) return;
+  // Reset tournament to registration after archiving
+  state.status = 'registration';
+  state.teams = [];
+  state.matches = [];
+  state.groups = [];
+  await saveState(state);
+  showToast(t('hof_archived'));
+}
+
+async function removeHofUI(id) {
+  if (!confirm(t('hof_remove_confirm'))) return;
+  removePastTournament(state, id);
+  await saveState(state);
+  renderHof();
 }
 
 function openModal(matchId) {
