@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Реєстрація команди — Tank Company Cup</title>
+<title>Register — Tank Company Cup</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,10 +15,11 @@
     TANK COMPANY <span class="sub">CUP</span>
   </div>
   <div class="nav-links">
-    <a class="nav-link active" href="register.html">Реєстрація</a>
-    <a class="nav-link" href="public.html">Турнір</a>
-    <a class="nav-link" href="admin.html">Адмін</a>
+    <a class="nav-link active" href="register.html" data-i18n="nav_register">Register</a>
+    <a class="nav-link" href="public.html" data-i18n="nav_tournament">Tournament</a>
+    <a class="nav-link" href="admin.html" data-i18n="nav_admin">Admin</a>
   </div>
+  <div class="lang-switcher" id="langSwitcher"></div>
   <div class="live-indicator"><span class="live-dot" id="liveDot"></span><span id="liveText">Реєстрація відкрита</span></div>
 </div>
 
@@ -64,7 +65,11 @@ Kolobok88"></textarea>
 <div class="toast" id="toast"><span class="toast-dot"></span><span id="toastText"></span></div>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script>
+buildLangPicker('langSwitcher');
+applyTranslations();
+
 let state = structuredClone(DEFAULT_STATE);
 
 async function render(s) {
