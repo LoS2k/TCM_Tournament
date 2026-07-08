@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Адмін-панель — Tank Company Cup</title>
+<title>Admin — Tank Company Cup</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,17 +15,18 @@
     TANK COMPANY <span class="sub">CUP</span>
   </div>
   <div class="nav-links">
-    <a class="nav-link" href="register.html">Реєстрація</a>
-    <a class="nav-link" href="public.html">Турнір</a>
-    <a class="nav-link active" href="admin.html">Адмін</a>
+    <a class="nav-link" href="register.html" data-i18n="nav_register">Register</a>
+    <a class="nav-link" href="public.html" data-i18n="nav_tournament">Tournament</a>
+    <a class="nav-link active" href="admin.html" data-i18n="nav_admin">Admin</a>
   </div>
+  <div class="lang-switcher" id="langSwitcher"></div>
   <div id="authBarLoggedOut" class="live-indicator">
-    <span class="live-dot"></span><span>Не авторизовано</span>
+    <span class="live-dot"></span><span data-i18n="login_title">Admin login</span>
   </div>
   <div id="authBarLoggedIn" class="admin-bar" style="display:none">
     <div class="admin-avatar" id="adminAvatar"></div>
     <span class="admin-email" id="adminEmail"></span>
-    <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Вийти</button>
+    <button class="btn btn-ghost btn-sm" onclick="handleLogout()" data-i18n="logout_btn">Sign out</button>
   </div>
 </div>
 
@@ -55,66 +56,109 @@
   <!-- SETUP SECTION -->
   <div class="grid-2 mb-16">
     <div class="card">
-      <div class="card-title">Налаштування турніру</div>
+      <div class="card-title" data-i18n="admin_setup_title">Tournament settings</div>
       <div class="field">
-        <label class="field-label">Назва турніру</label>
+        <label class="field-label" data-i18n="admin_name_label">Tournament name</label>
         <input type="text" id="setName">
       </div>
       <div class="field-row">
         <div class="field">
-          <label class="field-label">Формат</label>
+          <label class="field-label" data-i18n="admin_mode_label">Mode</label>
+          <select id="setMode" onchange="onModeChange()">
+            <option value="team" data-i18n="admin_mode_team">Teams</option>
+            <option value="solo" data-i18n="admin_mode_solo">1v1 Solo</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" data-i18n="admin_format_label">Format</label>
           <select id="setFormat">
             <option value="SE">Single Elimination</option>
             <option value="DE">Double Elimination</option>
             <option value="RR">Round Robin</option>
+            <option value="GROUP">Group Stage + Playoff</option>
           </select>
         </div>
+      </div>
+      <div class="field-row">
         <div class="field">
-          <label class="field-label">Best of</label>
+          <label class="field-label" data-i18n="admin_bestof_label">Best of</label>
           <select id="setBestOf">
             <option value="1">BO1</option>
             <option value="3" selected>BO3</option>
             <option value="5">BO5</option>
           </select>
         </div>
+        <div class="field">
+          <label class="field-label" data-i18n="admin_size_label">Bracket size</label>
+          <select id="setBracketSize">
+            <option value="4" data-i18n="admin_size_4">4 teams</option>
+            <option value="8" selected data-i18n="admin_size_8">8 teams</option>
+            <option value="16" data-i18n="admin_size_16">16 teams</option>
+          </select>
+        </div>
       </div>
-      <div class="field">
-        <label class="field-label">Розмір сітки</label>
-        <select id="setBracketSize">
-          <option value="4">4 команди</option>
-          <option value="8" selected>8 команд</option>
-          <option value="16">16 команд</option>
-        </select>
+      <div class="flex-gap mt-8">
+        <button class="btn btn-ghost btn-block" onclick="saveSetup()" data-i18n="admin_save_setup">Save settings</button>
+        <button class="btn btn-ghost btn-sm" onclick="shuffleSeedsUI()" title="Shuffle seeds randomly">🔀 Seeds</button>
       </div>
-      <button class="btn btn-ghost btn-block" onclick="saveSetup()">Зберегти налаштування</button>
     </div>
 
     <div class="card">
-      <div class="card-title">Дії з турніром</div>
+      <div class="card-title" data-i18n="admin_actions_title">Tournament actions</div>
       <div class="text-sm text-muted mb-16" id="statusInfo"></div>
-      <button class="btn btn-green btn-block mb-16" id="startBtn" onclick="startTournament()">▶ Запустити турнір</button>
-      <button class="btn btn-ghost btn-block mb-16" onclick="goTo('register.html')">↗ Відкрити сторінку реєстрації</button>
-      <button class="btn btn-ghost btn-block mb-16" onclick="goTo('public.html')">↗ Відкрити публічну сторінку</button>
-      <button class="btn btn-danger btn-block" onclick="resetTournament()">✕ Скинути турнір повністю</button>
+      <button class="btn btn-green btn-block mb-16" id="startBtn" onclick="startTournament()">▶ <span data-i18n="admin_start_btn">Start tournament</span></button>
+      <button class="btn btn-ghost btn-block mb-16" onclick="goTo('register.html')">↗ <span data-i18n="admin_open_reg">Open registration page</span></button>
+      <button class="btn btn-ghost btn-block mb-16" onclick="goTo('public.html')">↗ <span data-i18n="admin_open_pub">Open public page</span></button>
+      <button class="btn btn-danger btn-block" onclick="resetTournament()"><span data-i18n="admin_reset">✕ Reset tournament</span></button>
     </div>
   </div>
 
   <!-- TEAMS SECTION -->
   <div class="card mb-16">
     <div class="flex-between mb-16">
-      <div class="card-title" style="margin-bottom:0">Команди</div>
-      <span class="badge badge-muted" id="teamCountBadge"></span>
+      <div class="card-title" style="margin-bottom:0" data-i18n="admin_teams_title">Teams</div>
+      <div class="flex-gap">
+        <span class="badge badge-muted" id="teamCountBadge"></span>
+        <span class="mode-badge" id="modeBadge"></span>
+      </div>
     </div>
 
     <div class="field-row mb-16" style="align-items:end;">
       <div class="field" style="margin-bottom:0">
-        <label class="field-label">Швидке додавання команди</label>
-        <input type="text" id="quickTeamName" placeholder="Назва команди">
+        <label class="field-label" id="quickAddLabel" data-i18n="admin_quick_add">Quick add team</label>
+        <input type="text" id="quickTeamName" data-i18n-placeholder="admin_quick_placeholder">
       </div>
-      <button class="btn btn-primary" onclick="quickAddTeam()" style="height:42px">+ Додати</button>
+      <button class="btn btn-primary" onclick="quickAddTeam()" style="height:42px" data-i18n="admin_add_btn">+ Add</button>
+
     </div>
 
     <div id="teamList"></div>
+  </div>
+
+  <!-- MAP POOL SECTION -->
+  <div class="card mb-16">
+    <div class="card-title" data-i18n="admin_maps_title">Map pool (for ban/pick)</div>
+
+    <div class="field-row mb-16" style="align-items:end;">
+      <div class="field" style="margin-bottom:0">
+        <label class="field-label" data-i18n="admin_map_name">Map name</label>
+        <input type="text" id="newMapName" data-i18n-placeholder="admin_map_name">
+      </div>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer; height:42px; display:flex; align-items:center;">
+        <span data-i18n="admin_map_upload">Upload image</span>
+        <input type="file" id="mapImageInput" accept="image/*" class="map-upload-input" onchange="onMapImageSelected()">
+      </label>
+      <button class="btn btn-primary" onclick="addMapUI()" style="height:42px" data-i18n="admin_add_map">+ Add map</button>
+    </div>
+
+    <div id="uploadProgress" style="display:none; margin-bottom:12px;">
+      <div style="font-size:12px; color:var(--text-3); margin-bottom:4px;" id="uploadProgressLabel">Uploading...</div>
+      <div style="height:4px; background:var(--bg-3); border-radius:2px; overflow:hidden;">
+        <div id="uploadProgressBar" style="height:100%; background:var(--green); width:0%; transition:width .2s;"></div>
+      </div>
+    </div>
+
+    <div id="mapPoolGrid" class="map-grid"></div>
   </div>
 
   <!-- BRACKET / RESULTS SECTION -->
@@ -240,18 +284,73 @@
 <div class="toast" id="toast"><span class="toast-dot"></span><span id="toastText"></span></div>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script>
+buildLangPicker('langSwitcher');
+applyTranslations();
+
 let state = structuredClone(DEFAULT_STATE);
 let editingMatchId = null;
+let pendingMapImageFile = null;
 
 async function render(s) {
   state = s || await loadStateAsync();
   document.getElementById('loadingNotice')?.remove();
 
   document.getElementById('setName').value = state.tournamentName;
-  document.getElementById('setFormat').value = state.format;
+  document.getElementById('setFormat').value = state.format || 'SE';
+  document.getElementById('setMode').value = state.mode || 'team';
   document.getElementById('setBestOf').value = state.bestOf;
   document.getElementById('setBracketSize').value = state.bracketSize;
+
+  onModeChange(false);
+
+  const statusMap = {
+    registration: ['Waiting', false],
+    live: ['Live', true],
+    finished: ['Finished', false]
+  };
+  const [label] = statusMap[state.status] || ['—', false];
+
+  const isSolo = (state.mode || 'team') === 'solo';
+  document.getElementById('statusInfo').textContent =
+    state.status === 'registration'
+      ? `${state.teams.length} ${isSolo ? 'players' : 'teams'} registered. Minimum 2 to start.`
+      : `Status: ${label}. Matches: ${state.matches.length}.`;
+
+  const startBtn = document.getElementById('startBtn');
+  startBtn.disabled = state.status !== 'registration' || state.teams.length < 2;
+  startBtn.querySelector('span').textContent = state.status === 'registration'
+    ? t('admin_start_btn') : t('admin_started_btn');
+
+  renderTeams();
+  renderBracket();
+  renderInfoEditor();
+  renderHomeEditor();
+  renderMapPool();
+}
+
+function onModeChange(save = false) {
+  const mode = document.getElementById('setMode')?.value || 'team';
+  const isSolo = mode === 'solo';
+
+  const lbl = document.getElementById('quickAddLabel');
+  const inp = document.getElementById('quickTeamName');
+  const badge = document.getElementById('modeBadge');
+
+  if (lbl) lbl.textContent = t(isSolo ? 'admin_quick_add_1v1' : 'admin_quick_add');
+  if (inp) inp.placeholder = t(isSolo ? 'admin_quick_placeholder_1v1' : 'admin_quick_placeholder');
+  if (badge) {
+    badge.className = 'mode-badge ' + (isSolo ? 'mode-solo' : 'mode-team');
+    badge.textContent = t(isSolo ? 'admin_mode_solo' : 'admin_mode_team');
+  }
+}
+
+async function shuffleSeedsUI() {
+  shuffleSeeds(state);
+  await saveState(state);
+  showToast(t('toast_added', { name: 'Seeds shuffled' }));
+}
 
   const statusMap = {
     registration: ['Очікування', false],
@@ -363,30 +462,31 @@ function matchCardHtml(m) {
 async function saveSetup() {
   state.tournamentName = document.getElementById('setName').value.trim() || state.tournamentName;
   state.format = document.getElementById('setFormat').value;
+  state.mode = document.getElementById('setMode').value;
   state.bestOf = parseInt(document.getElementById('setBestOf').value);
   state.bracketSize = parseInt(document.getElementById('setBracketSize').value);
   await saveState(state);
-  showToast('Налаштування збережено');
+  showToast(t('toast_settings_saved'));
 }
 
 async function startTournament() {
-  if (state.teams.length < 2) return showToast('Потрібно мінімум 2 команди');
+  if (state.teams.length < 2) return showToast('Minimum 2 teams required');
   generateBracket(state);
   await saveState(state);
-  showToast('Турнір запущено! ▶');
+  showToast(t('toast_started'));
 }
 
 async function resetTournament() {
   if (!confirm('Скинути весь турнір? Усі команди та результати буде видалено.')) return;
   state = structuredClone(DEFAULT_STATE);
   await saveState(state);
-  showToast('Турнір скинуто');
+  showToast(t('toast_reset'));
 }
 
 async function quickAddTeam() {
   const name = document.getElementById('quickTeamName').value.trim();
   if (!name) return;
-  if (state.teams.length >= state.bracketSize) return showToast('Усі місця зайняті');
+  if (state.teams.length >= state.bracketSize) return showToast(t('toast_slots_full'));
   addTeam(state, name, []);
   await saveState(state);
   document.getElementById('quickTeamName').value = '';
@@ -398,7 +498,96 @@ async function removeTeamById(id) {
   await saveState(state);
 }
 
-/* ---------- TOURNAMENT INFO EDITOR ---------- */
+/* ---------- MAP POOL ---------- */
+function renderMapPool() {
+  ensureMapPool(state);
+  const grid = document.getElementById('mapPoolGrid');
+  if (!grid) return;
+  if (state.mapPool.length === 0) {
+    grid.innerHTML = `<div class="text-sm text-muted">${t('admin_no_maps')}</div>`;
+    return;
+  }
+  grid.innerHTML = state.mapPool.map(m => `
+    <div class="map-card" id="mapcard_${m.id}">
+      ${m.imageUrl
+        ? `<img src="${esc(m.imageUrl)}" alt="${esc(m.name)}">`
+        : `<div class="map-card-placeholder">🗺️</div>`}
+      <div class="map-card-name">${esc(m.name)}</div>
+      <button class="map-card-remove" onclick="removeMapUI('${m.id}')" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+function onMapImageSelected() {
+  const file = document.getElementById('mapImageInput').files[0];
+  if (!file) return;
+  pendingMapImageFile = file;
+  showToast(`Image selected: ${file.name}`);
+}
+
+async function addMapUI() {
+  const name = document.getElementById('newMapName').value.trim();
+  if (!name) return showToast(t('toast_error_name'));
+
+  let imageUrl = '';
+
+  if (pendingMapImageFile) {
+    imageUrl = await uploadMapImage(pendingMapImageFile, name);
+    pendingMapImageFile = null;
+    document.getElementById('mapImageInput').value = '';
+  }
+
+  addMap(state, name, imageUrl);
+  await saveState(state);
+  document.getElementById('newMapName').value = '';
+  showToast(t('toast_map_added'));
+}
+
+async function uploadMapImage(file, mapName) {
+  try {
+    const { getStorage, ref, uploadBytesResumable, getDownloadURL } =
+      await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+
+    await _initPromise;
+    const storage = getStorage(window._app || window._fsApi.db.app);
+    const storageRef = ref(storage, `maps/${uid()}_${file.name}`);
+
+    return await new Promise((resolve, reject) => {
+      const task = uploadBytesResumable(storageRef, file);
+      const bar = document.getElementById('uploadProgressBar');
+      const label = document.getElementById('uploadProgressLabel');
+      const wrap = document.getElementById('uploadProgress');
+      if (wrap) wrap.style.display = 'block';
+
+      task.on('state_changed',
+        (snap) => {
+          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          if (bar) bar.style.width = pct + '%';
+          if (label) label.textContent = `Uploading... ${pct}%`;
+        },
+        (err) => {
+          if (wrap) wrap.style.display = 'none';
+          reject(err);
+        },
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          if (wrap) wrap.style.display = 'none';
+          resolve(url);
+        }
+      );
+    });
+  } catch (e) {
+    console.error('Upload failed:', e);
+    showToast('Upload failed: ' + e.message);
+    return '';
+  }
+}
+
+async function removeMapUI(id) {
+  removeMap(state, id);
+  await saveState(state);
+  showToast(t('toast_map_removed'));
+}
 function renderInfoEditor() {
   ensureInfo(state);
   document.getElementById('infoRules').value = state.info.rules || '';
@@ -427,12 +616,12 @@ function renderInfoEditor() {
 async function addSponsorUI() {
   const name = document.getElementById('sponsorName').value.trim();
   const url = document.getElementById('sponsorUrl').value.trim();
-  if (!name) return showToast('Введи назву спонсора');
+  if (!name) return showToast(t('toast_error_name'));
   addSponsor(state, name, url);
   await saveState(state);
   document.getElementById('sponsorName').value = '';
   document.getElementById('sponsorUrl').value = '';
-  showToast('Спонсора додано');
+  showToast(t('toast_sponsor_added'));
 }
 
 async function removeSponsorUI(id) {
@@ -449,7 +638,7 @@ async function saveInfo() {
   state.info.prizePool.second = document.getElementById('prize2').value.trim();
   state.info.prizePool.third = document.getElementById('prize3').value.trim();
   await saveState(state);
-  showToast('Інформацію збережено');
+  showToast(t('toast_info_saved'));
 }
 
 /* ---------- HOMEPAGE FEATURES ---------- */
@@ -513,7 +702,7 @@ async function addStreamChannelUI() {
   await saveState(state);
   document.getElementById('streamChannelName').value = '';
   document.getElementById('streamChannelUrl').value = '';
-  showToast('Канал додано');
+  showToast(t('toast_stream_added'));
 }
 
 async function removeStreamChannelUI(id) {
@@ -523,11 +712,11 @@ async function removeStreamChannelUI(id) {
 
 async function addNewsUI() {
   const text = document.getElementById('newsText').value.trim();
-  if (!text) return showToast('Введи текст оголошення');
+  if (!text) return showToast(t('toast_error_name'));
   addNews(state, text);
   await saveState(state);
   document.getElementById('newsText').value = '';
-  showToast('Оголошення опубліковано');
+  showToast(t('toast_news_published'));
 }
 
 async function removeNewsUI(id) {
@@ -556,7 +745,7 @@ async function setLive() {
   if (!editingMatchId) return;
   setMatchLive(state, editingMatchId);
   await saveState(state);
-  showToast('Матч переведено в LIVE');
+  showToast(t('toast_live_set'));
   closeModal();
 }
 
@@ -566,7 +755,7 @@ async function saveResult() {
   const s2 = parseInt(document.getElementById('modalScore2').value) || 0;
   submitResult(state, editingMatchId, s1, s2);
   await saveState(state);
-  showToast('Результат збережено');
+  showToast(t('toast_result_saved'));
   closeModal();
 }
 
