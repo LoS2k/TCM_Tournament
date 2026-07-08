@@ -20,43 +20,43 @@
     <a class="nav-link" href="admin.html" data-i18n="nav_admin">Admin</a>
   </div>
   <div class="lang-switcher" id="langSwitcher"></div>
-  <div class="live-indicator"><span class="live-dot" id="liveDot"></span><span id="liveText">Реєстрація відкрита</span></div>
+  <div class="live-indicator">
+    <span class="live-dot" id="liveDot"></span>
+    <span id="liveText"></span>
+  </div>
 </div>
 
 <div class="page-narrow">
   <div class="page-head">
-    <div class="eyebrow">Крок 1 з 1</div>
+    <div class="eyebrow" data-i18n="reg_eyebrow">Step 1 of 1</div>
     <h1 class="page-title" id="tournamentTitle">Tank Company Cup #1</h1>
-    <p class="page-subtitle">Заповни форму нижче — твоя команда з'явиться в загальному списку одразу після реєстрації.</p>
+    <p class="page-subtitle" id="pageSubtitle"></p>
   </div>
 
   <div class="card" id="registrationCard">
-    <div class="card-title">Дані команди</div>
-    <div id="loadingNotice" class="text-sm text-muted mb-16">Підключення до сервера...</div>
+    <div class="card-title" id="cardTitle"></div>
+    <div id="loadingNotice" class="text-sm text-muted mb-16" data-i18n="reg_loading">Connecting...</div>
 
     <div class="field">
-      <label class="field-label">Назва команди</label>
-      <input type="text" id="teamName" placeholder="Steel Hunters" maxlength="30">
+      <label class="field-label" id="nameLabel"></label>
+      <input type="text" id="teamName" maxlength="30">
     </div>
 
-    <div class="field">
-      <label class="field-label">Гравці (по одному в рядку)</label>
-      <textarea id="teamPlayers" rows="4" placeholder="GravecYUA
-TankMaster_UA
-Kolobok88"></textarea>
+    <!-- Only shown in team mode -->
+    <div class="field" id="playersField">
+      <label class="field-label" id="playersLabel"></label>
+      <textarea id="teamPlayers" rows="4"></textarea>
     </div>
 
-    <button class="btn btn-primary btn-block" id="submitBtn" onclick="submitRegistration()">
-      Зареєструвати команду
-    </button>
+    <button class="btn btn-primary btn-block" id="submitBtn" onclick="submitRegistration()"></button>
 
     <div class="text-sm text-muted mt-24" id="slotsInfo" style="text-align:center"></div>
   </div>
 
   <div class="card mt-32">
     <div class="flex-between mb-16">
-      <div class="card-title" style="margin-bottom:0">Зареєстровані команди</div>
-      <span class="badge badge-muted" id="teamCountBadge">0 команд</span>
+      <div class="card-title" style="margin-bottom:0" id="listTitle"></div>
+      <span class="badge badge-muted" id="teamCountBadge"></span>
     </div>
     <div id="teamList"></div>
   </div>
@@ -68,57 +68,81 @@ Kolobok88"></textarea>
 <script src="i18n.js"></script>
 <script>
 buildLangPicker('langSwitcher');
-applyTranslations();
 
 let state = structuredClone(DEFAULT_STATE);
 
 async function render(s) {
   state = s || await loadStateAsync();
+
+  const isSolo = (state.mode || 'team') === 'solo';
+
+  // Apply translations now that we know the mode
+  applyTranslations();
+
   document.getElementById('loadingNotice').style.display = 'none';
   document.getElementById('tournamentTitle').textContent = state.tournamentName;
+  document.getElementById('pageSubtitle').textContent = t('reg_subtitle');
+  document.getElementById('cardTitle').textContent = t('reg_card_title');
+  document.getElementById('nameLabel').textContent = t(isSolo ? 'reg_player_label_solo' : 'reg_team_name_label');
+  document.getElementById('listTitle').textContent = t('reg_list_title');
 
+  // Name input placeholder
+  document.getElementById('teamName').placeholder = t('reg_team_name_placeholder');
+
+  // Players field — hide in solo mode
+  const playersField = document.getElementById('playersField');
+  playersField.style.display = isSolo ? 'none' : 'block';
+  if (!isSolo) {
+    document.getElementById('playersLabel').textContent = t('reg_players_label');
+    document.getElementById('teamPlayers').placeholder = t('reg_players_placeholder');
+  }
+
+  // Live indicator
   const liveDot = document.getElementById('liveDot');
   const liveText = document.getElementById('liveText');
-  const card = document.getElementById('registrationCard');
   const submitBtn = document.getElementById('submitBtn');
+  const isOpen = state.status === 'registration';
 
-  if (state.status === 'registration') {
-    liveDot.classList.remove('on');
-    liveText.textContent = 'Реєстрація відкрита';
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Зареєструвати команду';
-  } else {
-    liveDot.classList.add('on');
-    liveText.textContent = state.status === 'live' ? 'Турнір розпочато' : 'Турнір завершено';
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Реєстрація закрита';
-  }
+  liveDot.classList.toggle('on', !isOpen);
+  liveText.textContent = isOpen
+    ? t('hero_eyebrow_registration')
+    : state.status === 'live' ? t('hero_eyebrow_live') : t('hero_eyebrow_finished');
 
-  document.getElementById('teamCountBadge').textContent = `${state.teams.length} / ${state.bracketSize} команд`;
-  document.getElementById('slotsInfo').textContent =
-    state.teams.length >= state.bracketSize
-      ? 'Усі місця заповнено'
-      : `Вільних місць: ${state.bracketSize - state.teams.length}`;
+  submitBtn.disabled = !isOpen;
+  submitBtn.textContent = isOpen
+    ? t(isSolo ? 'reg_submit_1v1' : 'reg_submit')
+    : t('reg_closed');
 
+  // Slots counter
+  const slotsLeft = state.bracketSize - state.teams.length;
+  document.getElementById('teamCountBadge').textContent =
+    t(isSolo ? 'reg_count_solo' : 'reg_count', { n: state.teams.length, max: state.bracketSize });
+  document.getElementById('slotsInfo').textContent = slotsLeft <= 0
+    ? t('reg_slots_full')
+    : t('reg_slots_free', { n: slotsLeft });
+
+  // Team list
   const list = document.getElementById('teamList');
   if (state.teams.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">Поки що жодна команда не зареєструвалась</div></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◌</div><div class="empty-state-text">${t('reg_empty')}</div></div>`;
     return;
   }
-  list.innerHTML = state.teams.map((t, i) => `
+  list.innerHTML = state.teams.map((team, i) => `
     <div class="team-row">
       <div class="team-row-left">
-        <div class="seed-chip">${i + 1}</div>
+        <div class="seed-chip">${team.seed || i + 1}</div>
         <div>
-          <div class="team-name">${escapeHtml(t.name)}</div>
-          <div class="team-players">${t.players.map(escapeHtml).join(', ') || 'без гравців'}</div>
+          <div class="team-name">${esc(team.name)}</div>
+          ${!isSolo && team.players && team.players.length
+            ? `<div class="team-players">${team.players.map(esc).join(', ')}</div>`
+            : ''}
         </div>
       </div>
     </div>
   `).join('');
 }
 
-function escapeHtml(s) {
+function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
@@ -126,26 +150,28 @@ function escapeHtml(s) {
 
 async function submitRegistration() {
   const name = document.getElementById('teamName').value.trim();
-  const playersRaw = document.getElementById('teamPlayers').value;
+  const isSolo = (state.mode || 'team') === 'solo';
+  const playersRaw = isSolo ? '' : document.getElementById('teamPlayers').value;
   const players = playersRaw.split('\n').map(p => p.trim()).filter(Boolean);
 
-  if (!name) return showToast('Введи назву команди');
-  if (state.status !== 'registration') return showToast('Реєстрація закрита');
-  if (state.teams.length >= state.bracketSize) return showToast('Усі місця вже зайняті');
-  if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase())) return showToast('Команда з такою назвою вже є');
+  if (!name) return showToast(t('reg_error_name'));
+  if (state.status !== 'registration') return showToast(t('reg_error_closed'));
+  if (state.teams.length >= state.bracketSize) return showToast(t('reg_error_full'));
+  if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase()))
+    return showToast(t('reg_error_exists'));
 
   const submitBtn = document.getElementById('submitBtn');
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Реєструємо...';
+  submitBtn.textContent = t('reg_loading');
 
   addTeam(state, name, players);
   await saveState(state);
 
   document.getElementById('teamName').value = '';
-  document.getElementById('teamPlayers').value = '';
-  showToast(`Команда "${name}" зареєстрована!`);
+  if (!isSolo) document.getElementById('teamPlayers').value = '';
+  showToast(t(isSolo ? 'reg_success_solo' : 'reg_success', { name }));
   submitBtn.disabled = false;
-  submitBtn.textContent = 'Зареєструвати команду';
+  submitBtn.textContent = t(isSolo ? 'reg_submit_1v1' : 'reg_submit');
 }
 
 function showToast(msg) {
