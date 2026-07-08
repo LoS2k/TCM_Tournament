@@ -349,29 +349,7 @@ function onModeChange(save = false) {
 async function shuffleSeedsUI() {
   shuffleSeeds(state);
   await saveState(state);
-  showToast(t('toast_added', { name: 'Seeds shuffled' }));
-}
-
-  const statusMap = {
-    registration: ['Очікування', false],
-    live: ['Турнір триває', true],
-    finished: ['Завершено', false]
-  };
-  const [label] = statusMap[state.status] || ['—', false];
-
-  document.getElementById('statusInfo').textContent =
-    state.status === 'registration'
-      ? `${state.teams.length} команд зареєстровано. Мінімум 2 для старту.`
-      : `Статус: ${label}. Матчів: ${state.matches.length}.`;
-
-  const startBtn = document.getElementById('startBtn');
-  startBtn.disabled = state.status !== 'registration' || state.teams.length < 2;
-  startBtn.textContent = state.status === 'registration' ? '▶ Запустити турнір' : '✔ Турнір вже запущено';
-
-  renderTeams();
-  renderBracket();
-  renderInfoEditor();
-  renderHomeEditor();
+  showToast('Seeds shuffled 🔀');
 }
 
 function renderTeams() {
