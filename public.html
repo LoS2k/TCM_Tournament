@@ -116,6 +116,73 @@ function render(s) {
   renderHof(s);
 }
 
+/* ---------- COUNTDOWN ---------- */
+function renderCountdown(s) {
+  const wrap = document.getElementById('countdownWrap');
+  if (!wrap) return;
+
+  // Stop any previously running timer attached to this element
+  if (wrap._countdownTimer) {
+    clearInterval(wrap._countdownTimer);
+    wrap._countdownTimer = null;
+  }
+
+  // Look for a start date/time under any of the likely field names.
+  // Adjust this list if your state object uses a different key.
+  const targetRaw =
+    s.startDate || s.startAt || s.startTime ||
+    s.scheduledStart || s.tournamentDate || s.registrationDeadline;
+
+  const target = targetRaw ? new Date(targetRaw).getTime() : NaN;
+
+  if (!targetRaw || isNaN(target) || s.status === 'finished') {
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+
+  const pad = n => String(n).padStart(2, '0');
+
+  function tick() {
+    const diff = target - Date.now();
+
+    if (diff <= 0) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      if (wrap._countdownTimer) {
+        clearInterval(wrap._countdownTimer);
+        wrap._countdownTimer = null;
+      }
+      return;
+    }
+
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff / 3600000) % 24);
+    const minutes = Math.floor((diff / 60000) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+
+    let label;
+    try { label = t('pub_countdown_label'); } catch (e) { label = null; }
+    if (!label) label = 'До початку турніру';
+
+    wrap.innerHTML = `
+      <div class="countdown-box" style="display:flex;align-items:center;gap:14px;">
+        <div class="countdown-label" style="color:var(--text-3);font-size:13px;">${esc(label)}</div>
+        <div class="countdown-timer" style="font-family:var(--font-mono);font-size:20px;font-weight:800;display:flex;gap:8px;">
+          ${days > 0 ? `<span>${days}<small style="font-size:11px;opacity:.6">д</small></span>` : ''}
+          <span>${pad(hours)}<small style="font-size:11px;opacity:.6">г</small></span>
+          <span>${pad(minutes)}<small style="font-size:11px;opacity:.6">хв</small></span>
+          <span>${pad(seconds)}<small style="font-size:11px;opacity:.6">с</small></span>
+        </div>
+      </div>`;
+  }
+
+  tick();
+  wrap._countdownTimer = setInterval(tick, 1000);
+}
+
 /* ---------- HALL OF FAME ---------- */
 function renderHof(s) {
   ensurePastTournaments(s);
