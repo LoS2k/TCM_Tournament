@@ -31,10 +31,18 @@
     <div class="eyebrow" id="formatLabel">Format</div>
     <h1 class="page-title" id="tournamentTitle">Tank Company Cup #1</h1>
     <p class="page-subtitle" id="tournamentSub"></p>
+    <!-- Countdown -->
+    <div id="countdownWrap" style="margin-top:16px;"></div>
   </div>
 
   <!-- LIVE match banner -->
   <div class="grid-2" style="margin-bottom:24px;" id="liveMatchWrap"></div>
+
+  <!-- STREAMS -->
+  <div id="streamsCard" class="card mb-16" style="display:none">
+    <div class="card-title" data-i18n="streams_title">📺 Live streams</div>
+    <div class="stream-grid" id="streamGrid"></div>
+  </div>
 
   <!-- BRACKET -->
   <div class="card mb-16">
@@ -100,6 +108,8 @@ function render(s) {
       : t('pub_sub_default');
 
   renderLiveMatch(s);
+  renderCountdown(s);
+  renderStreams(s);
   renderBracket(s);
   renderInfo(s);
   renderStandings(s, isSolo);
